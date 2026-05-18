@@ -6,27 +6,27 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_device")
+@Table(name = "pair_tokens")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDevice {
+public class PairToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @Column(unique = true, nullable = false)
+    private String token;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne
-    @JoinColumn(name = "device_id")
-    private Device device;
+    private Boolean used = false;
 
-    // OWNER / MEMBER / VIEWER
-    private String role;
+    private LocalDateTime expiredAt;
 
     private LocalDateTime createdAt;
 

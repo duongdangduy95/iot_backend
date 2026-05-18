@@ -2,7 +2,9 @@ package com.example.iotbackend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -27,6 +29,9 @@ public class User {
     private Boolean verified = false;
 
     private String role = "USER";
+
+    @OneToMany(mappedBy = "owner")
+    private List<Device> ownedDevices;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 }

@@ -1,9 +1,9 @@
-package com.example.iotbackend.service.jwt ;
+package com.example.iotbackend.service.jwt;
 
 import com.example.iotbackend.entity.User;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
@@ -12,19 +12,21 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    private final String SECRET = "duongdangduyduyduongdangmysecreteypitbullduongdangduyduyduongdangmysecreteypitbull";
+    @Value("${jwt.secret}")
+    private String secret;
 
     private Key getSignKey() {
-        return Keys.hmacShaKeyFor(SECRET.getBytes());
+        return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
+    // ✅ FIX CHÍNH Ở ĐÂY
     public String generateToken(User user) {
         return Jwts.builder()
                 .setSubject(user.getEmail())
                 .claim("role", user.getRole())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 86400000))
-                .signWith(SignatureAlgorithm.HS256, SECRET)
+                .signWith(getSignKey(), SignatureAlgorithm.HS256) // 🔥 FIX
                 .compact();
     }
 

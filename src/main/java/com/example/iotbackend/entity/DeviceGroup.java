@@ -4,34 +4,30 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
-@Table(name = "user_device")
+@Table(name = "device_groups")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDevice {
+public class DeviceGroup {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String name;
+
+    private String description;
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne
-    @JoinColumn(name = "device_id")
-    private Device device;
+    @OneToMany(mappedBy = "group")
+    private List<Device> devices;
 
-    // OWNER / MEMBER / VIEWER
-    private String role;
-
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
+    private LocalDateTime createdAt = LocalDateTime.now();
 }
