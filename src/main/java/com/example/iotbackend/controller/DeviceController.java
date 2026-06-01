@@ -1,9 +1,6 @@
 package com.example.iotbackend.controller;
 
-import com.example.iotbackend.dto.ControlDeviceRequest;
-import com.example.iotbackend.dto.DeviceResponse;
-import com.example.iotbackend.dto.PairDeviceRequest;
-import com.example.iotbackend.dto.ShareDeviceRequest;
+import com.example.iotbackend.dto.*;
 import com.example.iotbackend.entity.Device;
 import com.example.iotbackend.entity.PairToken;
 import com.example.iotbackend.entity.User;
@@ -111,5 +108,29 @@ public class DeviceController {
         deviceService.controlDevice(req);
 
         return "OK";
+    }
+
+    @GetMapping("/{deviceId}/guests")
+    public List<DeviceGuestResponse> getGuests(
+            @PathVariable Long deviceId
+    ) {
+
+        return deviceService.getGuests(
+                deviceId
+        );
+    }
+
+    @DeleteMapping("/{deviceId}/guest/{guestUserId}")
+    public String removeGuest(
+            @PathVariable Long deviceId,
+            @PathVariable Long guestUserId
+    ) {
+
+        deviceService.removeGuest(
+                deviceId,
+                guestUserId
+        );
+
+        return "Removed";
     }
 }

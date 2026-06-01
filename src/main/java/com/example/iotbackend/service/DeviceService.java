@@ -1,14 +1,12 @@
 package com.example.iotbackend.service;
 
-import com.example.iotbackend.dto.ControlDeviceRequest;
-import com.example.iotbackend.dto.DeviceResponse;
-import com.example.iotbackend.dto.PairDeviceRequest;
-import com.example.iotbackend.dto.ShareDeviceRequest;
+import com.example.iotbackend.dto.*;
 import com.example.iotbackend.entity.*;
 import com.example.iotbackend.repository.*;
 import com.example.iotbackend.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -300,5 +298,129 @@ public class DeviceService {
         );
 
         deviceRepository.save(device);
+    }
+
+    public List<DeviceGuestResponse> getGuests(
+            Long deviceId
+    ) {
+
+        User currentUser =
+                securityUtils.getCurrentUser();
+
+        //
+        // FIND DEVICE
+        //
+        Device device =
+                deviceRepository
+                        .findById(deviceId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Device not found"
+                                ));
+
+        //
+        // ONLY OWNER
+        //
+        if (!device.getOwner()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            throw new RuntimeException(
+                    "Không có quyền"
+            );
+        }
+
+        //
+        // GET USERS
+        //
+        List<UserDevice> list =
+                userDeviceRepository
+                        .findByDeviceId(deviceId);
+
+        //
+        // REMOVE OWNER
+        //
+        return list.stream()
+
+                .filter(x ->
+                        !x.getRole()
+                                .equals("OWNER")
+                )
+
+                .map(x ->
+                        new DeviceGuestResponse(
+                                x.getUser().getId(),
+                                x.getUser().getUsername(),
+                                x.getUser().getEmail(),
+                                x.getRole()
+                        )
+                )
+
+                .toList();
+    }
+     @Transactional
+    public void removeGuest(
+            Long deviceId,
+            Long guestUserId
+    ) {
+
+        User currentUser =
+                securityUtils.getCurrentUser();
+
+        //
+        // FIND DEVICE
+        //
+        Device device =
+                deviceRepository
+                        .findById(deviceId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Device not found"
+                                ));
+
+        //
+        // ONLY OWNER
+        //
+        if (!device.getOwner()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            throw new RuntimeException(
+                    "Không có quyền"
+            );
+        }
+
+        //
+        // FIND USER DEVICE
+        //
+        UserDevice ud =
+                userDeviceRepository
+                        .findByUserIdAndDeviceId(
+                                guestUserId,
+                                deviceId
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Guest not found"
+                                ));
+
+        //
+        // KHÔNG CHO XÓA OWNER
+        //
+        if (ud.getRole().equals("OWNER")) {
+
+            throw new RuntimeException(
+                    "Không thể xóa owner"
+            );
+        }
+
+        //
+        // DELETE
+        //
+        userDeviceRepository
+                .deleteByUserIdAndDeviceId(
+                        guestUserId,
+                        deviceId
+                );
     }
 }

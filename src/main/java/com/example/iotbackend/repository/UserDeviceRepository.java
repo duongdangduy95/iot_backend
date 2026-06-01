@@ -17,10 +17,11 @@ public interface UserDeviceRepository extends JpaRepository<UserDevice, Long> {
 
     boolean existsByDeviceId(Long id);
 
+    List<UserDevice> findByDeviceId(Long deviceId);
+
 //    List<Device> findByUserId(Long id);
-Optional<UserDevice> findByUserIdAndDeviceId(
-        Long userId,
-        Long deviceId
-);
+    Optional<UserDevice> findByUserIdAndDeviceId(Long userId, Long deviceId);
+
+    void deleteByUserIdAndDeviceId(Long userId, Long deviceId);
 
 }
