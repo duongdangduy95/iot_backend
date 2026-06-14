@@ -42,11 +42,10 @@ public class SecurityConfig {
                         .permitAll()
 
                         .anyRequest().authenticated()
-                )
+                );
 
                 // 🔥 thêm JWT filter
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
+//                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+           return http.build();
     }
 }
