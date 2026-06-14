@@ -133,4 +133,14 @@ public class DeviceController {
 
         return "Removed";
     }
+
+    @PostMapping("/rename")
+    public String renameDevice(
+            @RequestBody RenameDeviceRequest req
+    ) {
+
+        deviceService.renameDevice(req);
+
+        return "Rename success";
+    }
 }

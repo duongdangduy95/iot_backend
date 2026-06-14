@@ -423,4 +423,42 @@ public class DeviceService {
                         deviceId
                 );
     }
+
+    public void renameDevice(
+            RenameDeviceRequest req
+    ) {
+
+        User currentUser =
+                securityUtils.getCurrentUser();
+
+        Device device =
+                deviceRepository
+                        .findById(
+                                req.getDeviceId()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Device not found"
+                                ));
+
+        //
+        // ONLY OWNER
+        //
+        if (!device.getOwner()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            throw new RuntimeException(
+                    "Không có quyền đổi tên thiết bị"
+            );
+        }
+
+        device.setName(
+                req.getName()
+        );
+
+        deviceRepository.save(
+                device
+        );
+    }
 }
