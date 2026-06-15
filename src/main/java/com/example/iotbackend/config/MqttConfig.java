@@ -27,26 +27,20 @@ public class MqttConfig {
     @Bean
     public MqttConnectOptions mqttConnectOptions() {
 
-        MqttConnectOptions options =
-                new MqttConnectOptions();
+        MqttConnectOptions options = new MqttConnectOptions();
 
-        options.setServerURIs(
-                new String[]{host}
-        );
-
+        options.setServerURIs(new String[]{host});
         options.setUserName(username);
+        options.setPassword(password.toCharArray());
 
-        options.setPassword(
-                password.toCharArray()
-        );
+        // ================= FIX QUAN TRỌNG =================
+        options.setAutomaticReconnect(true);   // 🔥 bắt buộc
+        options.setCleanSession(false);        // 🔥 giữ session khi reconnect
+        options.setKeepAliveInterval(30);      // ổn định connection
+        options.setConnectionTimeout(10);
 
-        options.setAutomaticReconnect(true);
-
-        options.setCleanSession(true);
-
-        options.setSocketFactory(
-                SSLSocketFactory.getDefault()
-        );
+        // SSL nếu dùng broker secure
+        options.setSocketFactory(SSLSocketFactory.getDefault());
 
         return options;
     }

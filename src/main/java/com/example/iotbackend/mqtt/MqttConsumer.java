@@ -12,7 +12,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.Message;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,11 +22,9 @@ import java.time.LocalDateTime;
 public class MqttConsumer {
 
     private final DeviceRepository deviceRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     private final PairTokenRepository pairTokenRepository;
-
     private final UserDeviceRepository userDeviceRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     @ServiceActivator(inputChannel = "mqttInputChannel")
@@ -42,10 +39,17 @@ public class MqttConsumer {
         System.out.println("TOPIC  : " + topic);
         System.out.println("PAYLOAD: " + payload);
 
+        if (topic == null || payload == null) {
+            System.out.println("❌ NULL MQTT DATA");
+            return;
+        }
+
         try {
 
-            // ================= REGISTER =================
-            if (topic != null && topic.endsWith("/register")) {
+            // =====================================================
+            // REGISTER
+            // =====================================================
+            if (topic.endsWith("/register")) {
 
                 System.out.println("➡ REGISTER HANDLER");
 
@@ -56,8 +60,6 @@ public class MqttConsumer {
                     System.out.println("❌ deviceId NULL");
                     return;
                 }
-
-                // ================= TOKEN =================
 
                 PairToken pairToken = pairTokenRepository
                         .findByToken(dto.getPairToken())
@@ -78,84 +80,73 @@ public class MqttConsumer {
                     return;
                 }
 
-                // ================= DEVICE =================
-
-                Device device = deviceRepository
-                        .findByDeviceCode(dto.getDeviceId())
-                        .orElseGet(Device::new);
+                Device device = getOrCreate(dto.getDeviceId());
 
                 device.setDeviceCode(dto.getDeviceId());
                 device.setType(dto.getType());
                 device.setIpAddress(dto.getIp());
-                device.setRssi(dto.getRssi());
                 device.setMacAddress(dto.getMac());
+                device.setRssi(dto.getRssi());
 
                 device.setOnline(true);
                 device.setPaired(true);
-
                 device.setOwner(pairToken.getUser());
-
                 device.setLastSeen(LocalDateTime.now());
 
-                Device savedDevice = deviceRepository.save(device);
-
-                // ================= USER DEVICE =================
+                Device saved = deviceRepository.save(device);
 
                 UserDevice ud = new UserDevice();
-
                 ud.setUser(pairToken.getUser());
-                ud.setDevice(savedDevice);
-
+                ud.setDevice(saved);
                 ud.setRole("OWNER");
 
                 userDeviceRepository.save(ud);
 
-                // ================= TOKEN USED =================
-
                 pairToken.setUsed(true);
-
                 pairTokenRepository.save(pairToken);
 
                 System.out.println("✅ DEVICE PAIRED SUCCESS");
             }
 
-            // ================= ONLINE =================
-            else if (topic != null && topic.endsWith("/online")) {
+            // =====================================================
+            // ONLINE
+            // =====================================================
+            else if (topic.endsWith("/online")) {
 
                 System.out.println("➡ ONLINE HANDLER");
 
-                String deviceCode = topic.split("/")[1];
+                String deviceCode = extractDeviceId(topic, payload);
 
-                deviceRepository.findByDeviceCode(deviceCode)
-                        .ifPresentOrElse(d -> {
-                            d.setOnline(true);
-                            d.setLastSeen(LocalDateTime.now());
-                            deviceRepository.save(d);
-                            System.out.println("✅ ONLINE UPDATED");
-                        }, () -> {
-                            System.out.println("❌ DEVICE NOT FOUND ONLINE: " + deviceCode);
-                        });
+                Device device = getOrCreate(deviceCode);
+
+                device.setOnline(true);
+                device.setLastSeen(LocalDateTime.now());
+
+                deviceRepository.save(device);
+
+                System.out.println("✅ ONLINE UPDATED");
             }
 
-            // ================= STATE =================
-            else if (topic != null && topic.endsWith("/state")) {
+            // =====================================================
+            // STATE
+            // =====================================================
+            else if (topic.endsWith("/state")) {
 
                 System.out.println("➡ STATE HANDLER");
 
                 JsonNode node = objectMapper.readTree(payload);
 
                 String deviceCode = node.get("deviceId").asText();
-                String state = node.get("state").asText();
+                String state = String.valueOf(node.get("state"));
 
-                deviceRepository.findByDeviceCode(deviceCode)
-                        .ifPresentOrElse(d -> {
-                            d.setStatus(state);
-                            d.setLastSeen(LocalDateTime.now());
-                            deviceRepository.save(d);
-                            System.out.println("✅ STATE UPDATED");
-                        }, () -> {
-                            System.out.println("❌ DEVICE NOT FOUND STATE: " + deviceCode);
-                        });
+                Device device = getOrCreate(deviceCode);
+
+                device.setStatus(state);
+                device.setLastSeen(LocalDateTime.now());
+
+                deviceRepository.save(device);
+
+                System.out.println("✅ STATE UPDATED");
             }
 
             else {
@@ -166,5 +157,34 @@ public class MqttConsumer {
             System.out.println("❌ MQTT ERROR: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    // =====================================================
+    // AUTO CREATE DEVICE (CORE FIX)
+    // =====================================================
+    private Device getOrCreate(String deviceId) {
+
+        return deviceRepository.findByDeviceCode(deviceId)
+                .orElseGet(() -> {
+                    Device d = new Device();
+                    d.setDeviceCode(deviceId);
+                    d.setOnline(false);
+                    d.setPaired(false);
+                    d.setLastSeen(LocalDateTime.now());
+                    return deviceRepository.save(d);
+                });
+    }
+
+    // fallback safe parse
+    private String extractDeviceId(String topic, String payload) {
+
+        try {
+            JsonNode node = objectMapper.readTree(payload);
+            if (node.has("deviceId")) {
+                return node.get("deviceId").asText();
+            }
+        } catch (Exception ignored) {}
+
+        return topic.split("/")[1];
     }
 }
