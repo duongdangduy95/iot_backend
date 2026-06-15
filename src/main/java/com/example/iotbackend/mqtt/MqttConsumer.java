@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,127 +31,113 @@ public class MqttConsumer {
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public void handle(Message<String> message) {
 
-        String topic = message.getHeaders()
-                .get("mqtt_receivedTopic", String.class);
-
+        String topic = message.getHeaders().get("mqtt_receivedTopic", String.class);
         String payload = message.getPayload();
 
-        System.out.println("\n🔥 MQTT RECEIVED");
-        System.out.println("TOPIC  : " + topic);
-        System.out.println("PAYLOAD: " + payload);
+        if (topic == null || payload == null) return;
 
-        if (topic == null || payload == null) {
-            System.out.println("❌ NULL MQTT DATA");
-            return;
-        }
+        System.out.println("\n📩 MQTT TOPIC: " + topic);
+        System.out.println("PAYLOAD: " + payload);
 
         try {
 
+            String deviceId = extractDeviceId(topic, payload);
+
             // =====================================================
-            // REGISTER
+            // REGISTER (ONLY PLACE ALLOW CREATE)
             // =====================================================
             if (topic.endsWith("/register")) {
 
-                System.out.println("➡ REGISTER HANDLER");
+                DeviceRegisterDTO dto = objectMapper.readValue(payload, DeviceRegisterDTO.class);
 
-                DeviceRegisterDTO dto =
-                        objectMapper.readValue(payload, DeviceRegisterDTO.class);
+                if (dto.getDeviceId() == null) return;
 
-                if (dto.getDeviceId() == null) {
-                    System.out.println("❌ deviceId NULL");
-                    return;
-                }
+                Device device = deviceRepository.findByDeviceCode(dto.getDeviceId())
+                        .orElseGet(() -> {
+                            Device d = new Device();
+                            d.setDeviceCode(dto.getDeviceId());
+                            d.setOnline(false);
+                            d.setPaired(false);
+                            return d;
+                        });
 
-                PairToken pairToken = pairTokenRepository
-                        .findByToken(dto.getPairToken())
-                        .orElse(null);
-
-                if (pairToken == null) {
-                    System.out.println("❌ INVALID TOKEN");
-                    return;
-                }
-
-                if (Boolean.TRUE.equals(pairToken.getUsed())) {
-                    System.out.println("❌ TOKEN USED");
-                    return;
-                }
-
-                if (pairToken.getExpiredAt().isBefore(LocalDateTime.now())) {
-                    System.out.println("❌ TOKEN EXPIRED");
-                    return;
-                }
-
-                Device device = getOrCreate(dto.getDeviceId());
-
-                device.setDeviceCode(dto.getDeviceId());
                 device.setType(dto.getType());
                 device.setIpAddress(dto.getIp());
                 device.setMacAddress(dto.getMac());
                 device.setRssi(dto.getRssi());
-
-                device.setOnline(true);
-                device.setPaired(true);
-                device.setOwner(pairToken.getUser());
                 device.setLastSeen(LocalDateTime.now());
-
-                Device saved = deviceRepository.save(device);
-
-                UserDevice ud = new UserDevice();
-                ud.setUser(pairToken.getUser());
-                ud.setDevice(saved);
-                ud.setRole("OWNER");
-
-                userDeviceRepository.save(ud);
-
-                pairToken.setUsed(true);
-                pairTokenRepository.save(pairToken);
-
-                System.out.println("✅ DEVICE PAIRED SUCCESS");
-            }
-
-            // =====================================================
-            // ONLINE
-            // =====================================================
-            else if (topic.endsWith("/online")) {
-
-                System.out.println("➡ ONLINE HANDLER");
-
-                String deviceCode = extractDeviceId(topic, payload);
-
-                Device device = getOrCreate(deviceCode);
-
                 device.setOnline(true);
-                device.setLastSeen(LocalDateTime.now());
+
+                // ============================
+                // PAIR LOGIC
+                // ============================
+                if (dto.getPairToken() != null && !dto.getPairToken().isBlank()) {
+
+                    PairToken token = pairTokenRepository.findByToken(dto.getPairToken())
+                            .orElse(null);
+
+                    if (token != null
+                            && Boolean.FALSE.equals(token.getUsed())
+                            && token.getExpiredAt().isAfter(LocalDateTime.now())) {
+
+                        device.setOwner(token.getUser());
+                        device.setPaired(true);
+
+                        token.setUsed(true);
+                        pairTokenRepository.save(token);
+
+                        System.out.println("✅ DEVICE PAIRED SUCCESS");
+                    } else {
+                        System.out.println("⚠ INVALID PAIR TOKEN");
+                    }
+                }
 
                 deviceRepository.save(device);
-
-                System.out.println("✅ ONLINE UPDATED");
             }
 
             // =====================================================
-            // STATE
+            // ONLINE (NO AUTO CREATE)
             // =====================================================
-            else if (topic.endsWith("/state")) {
+            if (topic.endsWith("/online")) {
 
-                System.out.println("➡ STATE HANDLER");
+                Optional<Device> opt = deviceRepository.findByDeviceCode(deviceId);
+
+                if (opt.isEmpty()) {
+                    System.out.println("⚠ IGNORE ONLINE - UNKNOWN DEVICE: " + deviceId);
+                    return;
+                }
 
                 JsonNode node = objectMapper.readTree(payload);
+                boolean online = node.has("online") && node.get("online").asBoolean();
 
-                String deviceCode = node.get("deviceId").asText();
-                String state = String.valueOf(node.get("state"));
-
-                Device device = getOrCreate(deviceCode);
-
-                device.setStatus(state);
+                Device device = opt.get();
+                device.setOnline(online);
                 device.setLastSeen(LocalDateTime.now());
 
                 deviceRepository.save(device);
-
-                System.out.println("✅ STATE UPDATED");
+                return;
             }
 
-            else {
-                System.out.println("⚠ UNKNOWN TOPIC");
+            // =====================================================
+            // STATE (NO AUTO CREATE)
+            // =====================================================
+            if (topic.endsWith("/state")) {
+
+                Optional<Device> opt = deviceRepository.findByDeviceCode(deviceId);
+
+                if (opt.isEmpty()) {
+                    System.out.println("⚠ IGNORE STATE - UNKNOWN DEVICE: " + deviceId);
+                    return;
+                }
+
+                JsonNode node = objectMapper.readTree(payload);
+                boolean state = node.has("state") && node.get("state").asBoolean();
+
+                Device device = opt.get();
+                device.setStatus(String.valueOf(state));
+                device.setLastSeen(LocalDateTime.now());
+
+                deviceRepository.save(device);
             }
 
         } catch (Exception e) {
@@ -159,32 +146,13 @@ public class MqttConsumer {
         }
     }
 
-    // =====================================================
-    // AUTO CREATE DEVICE (CORE FIX)
-    // =====================================================
-    private Device getOrCreate(String deviceId) {
-
-        return deviceRepository.findByDeviceCode(deviceId)
-                .orElseGet(() -> {
-                    Device d = new Device();
-                    d.setDeviceCode(deviceId);
-                    d.setOnline(false);
-                    d.setPaired(false);
-                    d.setLastSeen(LocalDateTime.now());
-                    return deviceRepository.save(d);
-                });
-    }
-
-    // fallback safe parse
     private String extractDeviceId(String topic, String payload) {
-
         try {
             JsonNode node = objectMapper.readTree(payload);
-            if (node.has("deviceId")) {
-                return node.get("deviceId").asText();
-            }
+            if (node.has("deviceId")) return node.get("deviceId").asText();
         } catch (Exception ignored) {}
 
-        return topic.split("/")[1];
+        String[] parts = topic.split("/");
+        return parts.length > 1 ? parts[1] : topic;
     }
 }
