@@ -160,6 +160,7 @@ public class DeviceService {
                     res.setDeviceCode(device.getDeviceCode());
                     res.setName(device.getName());
                     res.setType(device.getType());
+                    res.setStatus(device.getStatus());
                     res.setOnline(device.getOnline());
 
                     return res;
