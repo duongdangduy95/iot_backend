@@ -83,6 +83,9 @@ public class DeviceController {
                 LocalDateTime.now().plusMinutes(5)
         );
 
+        System.out.println("CREATE NOW = " + LocalDateTime.now());
+        System.out.println("EXPIRE     = " + LocalDateTime.now().plusMinutes(5));
+
         pairTokenRepository.save(token);
 
         return ResponseEntity.ok(
