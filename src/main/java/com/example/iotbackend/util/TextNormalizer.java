@@ -4,30 +4,25 @@ import java.text.Normalizer;
 
 public class TextNormalizer {
 
-    private TextNormalizer() {
-    }
+    public static String normalize(String input) {
 
-    public static String normalize(String text) {
+        if (input == null) return "";
 
-        if (text == null) {
-            return "";
-        }
+        // lowercase
+        input = input.toLowerCase();
 
-        String normalized =
-                Normalizer.normalize(
-                        text,
-                        Normalizer.Form.NFD
-                );
+        // bỏ dấu tiếng Việt
+        input = Normalizer.normalize(input, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
 
-        normalized =
-                normalized.replaceAll(
-                        "\\p{M}",
-                        ""
-                );
+        // chuẩn hóa 1 số ký tự hay lỗi STT
+        input = input
+                .replace("đ", "d")
+                .replaceAll("[^a-z0-9\\s]", " ");
 
-        return normalized
-                .toLowerCase()
-                .trim()
-                .replaceAll("\\s+", " ");
+        // gộp khoảng trắng
+        input = input.replaceAll("\\s+", " ").trim();
+
+        return input;
     }
 }

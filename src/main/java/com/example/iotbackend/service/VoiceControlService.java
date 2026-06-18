@@ -1,6 +1,7 @@
 package com.example.iotbackend.service;
 
 import com.example.iotbackend.dto.ControlDeviceRequest;
+import com.example.iotbackend.dto.SpeechToTextResponse;
 import com.example.iotbackend.dto.VoiceControlResponse;
 import com.example.iotbackend.entity.Device;
 import com.example.iotbackend.entity.User;
@@ -17,6 +18,8 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -27,79 +30,65 @@ public class VoiceControlService {
     private final SecurityUtils securityUtils;
     private final UserDeviceRepository userDeviceRepository;
     private final DeviceService controlDeviceService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final RestTemplate restTemplate =
             new RestTemplate();
 
-    public VoiceControlResponse processVoice(
-            MultipartFile file
-    ) {
+    public VoiceControlResponse processVoice(MultipartFile file) {
 
         try {
 
-            String text =
-                    speechToText(file);
+            String raw = speechToText(file);
 
-            System.out.println(
-                    "VOICE RAW = " + text
-            );
+            JsonNode node = objectMapper.readTree(raw);
+
+            String text = node.has("text")
+                    ? node.get("text").asText()
+                    : raw;
+
+            System.out.println("VOICE RAW = " + text);
 
             return executeCommand(text);
 
         } catch (Exception e) {
-
-            e.printStackTrace();
-
-            return new VoiceControlResponse(
-                    false,
-                    e.getMessage()
-            );
+            return new VoiceControlResponse(false, e.getMessage());
         }
     }
 
-    private String speechToText(
-            MultipartFile file
-    ) throws Exception {
+    private String speechToText(MultipartFile file) throws Exception {
 
-        HttpHeaders headers =
-                new HttpHeaders();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-        headers.setContentType(
-                MediaType.MULTIPART_FORM_DATA
-        );
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
-        MultiValueMap<String, Object> body =
-                new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource(file.getBytes()) {
+            @Override
+            public String getFilename() {
+                return file.getOriginalFilename();
+            }
+        });
 
-        body.add(
-                "file",
-                new ByteArrayResource(
-                        file.getBytes()
-                ) {
-                    @Override
-                    public String getFilename() {
-                        return file.getOriginalFilename();
-                    }
-                }
-        );
+        HttpEntity<MultiValueMap<String, Object>> request =
+                new HttpEntity<>(body, headers);
 
-        HttpEntity<MultiValueMap<String, Object>>
-                request =
-                new HttpEntity<>(
-                        body,
-                        headers
-                );
-
-        ResponseEntity<String> response =
-                restTemplate.postForEntity(
+        ResponseEntity<SpeechToTextResponse> response =
+                restTemplate.exchange(
                         "https://voicemodel-production.up.railway.app/speech-to-text",
+                        HttpMethod.POST,
                         request,
-                        String.class
+                        SpeechToTextResponse.class
                 );
 
-        return response.getBody();
-    }
+        SpeechToTextResponse result = response.getBody();
 
+        if (result == null) {
+            throw new RuntimeException("STT null response");
+        }
+
+        return result.getText(); // 👈 CHỈ LẤY TEXT
+    }
     private VoiceControlResponse executeCommand(
             String text
     ) {

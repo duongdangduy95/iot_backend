@@ -5,42 +5,80 @@ import java.util.Map;
 
 public class DeviceVocabulary {
 
-    private static final Map<String, String> DEVICE_ALIASES =
-            new HashMap<>();
+    private static final Map<String, String> DEVICE_MAP = new HashMap<>();
 
     static {
 
-        // ĐÈN
+        // ===== ĐÈN =====
+        DEVICE_MAP.put("den", "den");
+        DEVICE_MAP.put("dèn", "den");
+        DEVICE_MAP.put("đen", "den");
+        DEVICE_MAP.put("len", "den");
+        DEVICE_MAP.put("lèn", "den");
+        DEVICE_MAP.put("bong den", "den");
+        DEVICE_MAP.put("bongden", "den");
 
-        DEVICE_ALIASES.put("den", "den");
-        DEVICE_ALIASES.put("đèn", "den");
-        DEVICE_ALIASES.put("bong den", "den");
-        DEVICE_ALIASES.put("bóng đèn", "den");
+        // ===== QUẠT =====
+        DEVICE_MAP.put("quat", "quat");
+        DEVICE_MAP.put("quạt", "quat");
 
-        // QUẠT
-
-        DEVICE_ALIASES.put("quat", "quat");
-        DEVICE_ALIASES.put("quạt", "quat");
-        DEVICE_ALIASES.put("quatj", "quat");
-        DEVICE_ALIASES.put("quac", "quat");
-
-        // TIVI
-
-        DEVICE_ALIASES.put("tivi", "tivi");
-        DEVICE_ALIASES.put("ti vi", "tivi");
-        DEVICE_ALIASES.put("tv", "tivi");
+        // ===== TIVI =====
+        DEVICE_MAP.put("tivi", "tivi");
+        DEVICE_MAP.put("tv", "tivi");
     }
 
-    public static String normalizeDeviceName(
-            String input
-    ) {
+    public static String normalizeDeviceName(String input) {
 
-        input =
-                TextNormalizer.normalize(input);
+        input = TextNormalizer.normalize(input);
 
-        return DEVICE_ALIASES.getOrDefault(
-                input,
-                input
-        );
+        // 1. match nguyên cụm
+        if (DEVICE_MAP.containsKey(input)) {
+            return DEVICE_MAP.get(input);
+        }
+
+        // 2. match từng từ trong câu (bật đèn -> den)
+        String[] words = input.split(" ");
+        for (String w : words) {
+            if (DEVICE_MAP.containsKey(w)) {
+                return DEVICE_MAP.get(w);
+            }
+        }
+
+        // 3. fallback fuzzy nhẹ (sai 1 ký tự vẫn bắt được)
+        for (String w : words) {
+            for (String key : DEVICE_MAP.keySet()) {
+                if (levenshtein(w, key) <= 1) {
+                    return DEVICE_MAP.get(key);
+                }
+            }
+        }
+
+        // 4. không match thì trả về raw
+        return input;
+    }
+
+    private static int levenshtein(String a, String b) {
+
+        int[][] dp = new int[a.length() + 1][b.length() + 1];
+
+        for (int i = 0; i <= a.length(); i++) {
+            for (int j = 0; j <= b.length(); j++) {
+
+                if (i == 0) dp[i][j] = j;
+                else if (j == 0) dp[i][j] = i;
+                else {
+                    dp[i][j] = Math.min(
+                            Math.min(
+                                    dp[i - 1][j] + 1,
+                                    dp[i][j - 1] + 1
+                            ),
+                            dp[i - 1][j - 1] +
+                                    (a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1)
+                    );
+                }
+            }
+        }
+
+        return dp[a.length()][b.length()];
     }
 }
