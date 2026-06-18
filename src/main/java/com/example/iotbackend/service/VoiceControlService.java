@@ -73,21 +73,28 @@ public class VoiceControlService {
         HttpEntity<MultiValueMap<String, Object>> request =
                 new HttpEntity<>(body, headers);
 
-        ResponseEntity<SpeechToTextResponse> response =
-                restTemplate.exchange(
+        ResponseEntity<String> response =
+                restTemplate.postForEntity(
                         "https://voicemodel-production.up.railway.app/speech-to-text",
-                        HttpMethod.POST,
                         request,
-                        SpeechToTextResponse.class
+                        String.class
                 );
 
-        SpeechToTextResponse result = response.getBody();
+        String raw = response.getBody();
 
-        if (result == null) {
-            throw new RuntimeException("STT null response");
+        // 🔥 nếu API trả JSON → extract text
+        if (raw != null && raw.trim().startsWith("{")) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode node = mapper.readTree(raw);
+                return node.has("text") ? node.get("text").asText() : raw;
+            } catch (Exception e) {
+                return raw;
+            }
         }
 
-        return result.getText(); // 👈 CHỈ LẤY TEXT
+        // 🔥 nếu trả text luôn
+        return raw;
     }
     private VoiceControlResponse executeCommand(
             String text
