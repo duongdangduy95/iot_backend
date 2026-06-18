@@ -11,12 +11,13 @@ public class DeviceVocabulary {
 
         // ===== ĐÈN =====
         DEVICE_MAP.put("den", "den");
-        DEVICE_MAP.put("dèn", "den");
+        DEVICE_MAP.put("đèn", "den");
         DEVICE_MAP.put("đen", "den");
-        DEVICE_MAP.put("len", "den");
+        DEVICE_MAP.put("dèn", "den");
         DEVICE_MAP.put("lèn", "den");
+        DEVICE_MAP.put("dền", "den");
         DEVICE_MAP.put("bong den", "den");
-        DEVICE_MAP.put("bongden", "den");
+        DEVICE_MAP.put("bóng đèn", "den");
 
         // ===== QUẠT =====
         DEVICE_MAP.put("quat", "quat");

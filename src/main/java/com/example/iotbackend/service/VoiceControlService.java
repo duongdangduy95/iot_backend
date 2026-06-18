@@ -1,7 +1,6 @@
 package com.example.iotbackend.service;
 
 import com.example.iotbackend.dto.ControlDeviceRequest;
-import com.example.iotbackend.dto.SpeechToTextResponse;
 import com.example.iotbackend.dto.VoiceControlResponse;
 import com.example.iotbackend.entity.Device;
 import com.example.iotbackend.entity.User;
@@ -10,6 +9,8 @@ import com.example.iotbackend.repository.UserDeviceRepository;
 import com.example.iotbackend.security.SecurityUtils;
 import com.example.iotbackend.util.DeviceVocabulary;
 import com.example.iotbackend.util.TextNormalizer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -18,8 +19,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -30,32 +29,33 @@ public class VoiceControlService {
     private final SecurityUtils securityUtils;
     private final UserDeviceRepository userDeviceRepository;
     private final DeviceService controlDeviceService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private final RestTemplate restTemplate =
-            new RestTemplate();
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public VoiceControlResponse processVoice(MultipartFile file) {
 
         try {
 
-            String raw = speechToText(file);
+            String text = speechToText(file);
 
-            JsonNode node = objectMapper.readTree(raw);
-
-            String text = node.has("text")
-                    ? node.get("text").asText()
-                    : raw;
-
-            System.out.println("VOICE RAW = " + text);
+            System.out.println("RAW SPEECH TEXT = " + text);
 
             return executeCommand(text);
 
         } catch (Exception e) {
-            return new VoiceControlResponse(false, e.getMessage());
+            e.printStackTrace();
+
+            return new VoiceControlResponse(
+                    false,
+                    e.getMessage()
+            );
         }
     }
 
+    // =========================
+    // FIX SPEECH TO TEXT CLEAN
+    // =========================
     private String speechToText(MultipartFile file) throws Exception {
 
         HttpHeaders headers = new HttpHeaders();
@@ -82,125 +82,104 @@ public class VoiceControlService {
 
         String raw = response.getBody();
 
-        // 🔥 nếu API trả JSON → extract text
-        if (raw != null && raw.trim().startsWith("{")) {
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode node = mapper.readTree(raw);
-                return node.has("text") ? node.get("text").asText() : raw;
-            } catch (Exception e) {
-                return raw;
-            }
+        if (raw == null || raw.isBlank()) {
+            throw new RuntimeException("Speech-to-text trả về rỗng");
         }
 
-        // 🔥 nếu trả text luôn
+        raw = raw.trim();
+
+        // =========================
+        // CASE 1: nếu API trả JSON
+        // =========================
+        if (raw.startsWith("{")) {
+            JsonNode node = objectMapper.readTree(raw);
+
+            if (node.has("text")) {
+                return node.get("text").asText().trim();
+            }
+
+            return raw;
+        }
+
+        // =========================
+        // CASE 2: plain text
+        // =========================
         return raw;
     }
-    private VoiceControlResponse executeCommand(
-            String text
-    ) {
 
-        String command =
-                TextNormalizer.normalize(text);
+    // =========================
+    // COMMAND EXECUTION
+    // =========================
+    private VoiceControlResponse executeCommand(String text) {
 
-        System.out.println(
-                "VOICE NORMALIZED = "
-                        + command
-        );
+        String command = TextNormalizer.normalize(text);
+        System.out.println("NORMALIZED = " + command);
 
         boolean state;
 
         if (command.contains("bat")) {
-
             state = true;
-
         } else if (command.contains("tat")) {
-
             state = false;
-
         } else {
-
             return new VoiceControlResponse(
                     false,
-                    "Không nhận diện được lệnh bật hoặc tắt"
+                    "Không nhận diện được lệnh bật/tắt"
             );
         }
 
-        String deviceName =
-                DeviceVocabulary.normalizeDeviceName(
-                        command
-                                .replace("bat", "")
-                                .replace("tat", "")
-                                .trim()
-                );
+        String deviceName = command
+                .replace("bat", "")
+                .replace("tat", "")
+                .trim();
 
-        System.out.println(
-                "DEVICE NAME = "
-                        + deviceName
-        );
+        deviceName = DeviceVocabulary.normalizeDeviceName(deviceName);
 
-        return controlDeviceByName(
-                deviceName,
-                state
-        );
+        System.out.println("DEVICE AFTER NORMALIZE = " + deviceName);
+
+        return controlDeviceByName(deviceName, state);
     }
 
+    // =========================
+    // CONTROL DEVICE
+    // =========================
     private VoiceControlResponse controlDeviceByName(
             String deviceName,
             boolean state
     ) {
 
-        User user =
-                securityUtils.getCurrentUser();
+        User user = securityUtils.getCurrentUser();
 
         List<UserDevice> userDevices =
-                userDeviceRepository.findByUserId(
-                        user.getId()
-                );
+                userDeviceRepository.findByUserId(user.getId());
 
         Device device =
                 userDevices.stream()
                         .map(UserDevice::getDevice)
                         .filter(d ->
                                 DeviceVocabulary
-                                        .normalizeDeviceName(
-                                                d.getName()
-                                        )
+                                        .normalizeDeviceName(d.getName())
                                         .equals(deviceName)
                         )
                         .findFirst()
                         .orElse(null);
 
         if (device == null) {
-
             return new VoiceControlResponse(
                     false,
-                    "Không tìm thấy thiết bị '"
-                            + deviceName
-                            + "', hãy thử lại"
+                    "Không tìm thấy thiết bị: " + deviceName
             );
         }
 
-        ControlDeviceRequest req =
-                new ControlDeviceRequest();
+        ControlDeviceRequest req = new ControlDeviceRequest();
+        req.setDeviceId(device.getId());
+        req.setState(state);
 
-        req.setDeviceId(
-                device.getId()
-        );
-
-        req.setState(
-                state
-        );
-
-        controlDeviceService.controlDevice(
-                req
-        );
+        controlDeviceService.controlDevice(req);
 
         return new VoiceControlResponse(
                 true,
-                "Đã "
-                        + (state ? "bật " : "tắt ")
-                        + device.getName()
+                "Đã " + (state ? "bật " : "tắt ") + device.getName()
         );
     }
 }
