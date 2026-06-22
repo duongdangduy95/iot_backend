@@ -20,38 +20,50 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final MqttService mqttService;
     private final UserDeviceRepository userDeviceRepository;
-     @Async
-     public void sendNotification(Device device, User actor, String title, String content) {
 
-         List<User> users = userDeviceRepository
-                 .findByDeviceId(device.getId())
-                 .stream()
-                 .map(UserDevice::getUser)
-                 .toList();
+    // =========================
+    // PUBLIC METHOD (SYNC)
+    // =========================
+    public void sendNotification(Device device, User actor, String title, String content) {
 
-         for (User u : users) {
+        // Lấy danh sách user KHÔNG TRÙNG
+        List<User> users = userDeviceRepository.findByDeviceId(device.getId())
+                .stream()
+                .map(UserDevice::getUser)
+                .distinct()
+                .toList();
 
-             Notification n = Notification.builder()
-                     .device(device)   // 🔥 GẮN DEVICE
-                     .actor(actor)
-                     .recipient(u)
-                     .title(title)
-                     .content(content)
-                     .createdAt(LocalDateTime.now())
-                     .build();
+        for (User u : users) {
+            sendAsync(device, actor, u, title, content);
+        }
+    }
 
-             notificationRepository.save(n);
+    // =========================
+    // ASYNC HANDLE (REAL INSERT)
+    // =========================
+    @Async
+    public void sendAsync(Device device, User actor, User recipient, String title, String content) {
 
-             mqttService.publish(
-                     "users/" + u.getId() + "/notifications",
-                     """
-                     {
-                         "title":"%s",
-                         "content":"%s",
-                         "deviceName":"%s"
-                     }
-                     """.formatted(title, content, device.getName())
-             );
-         }
-     }
+        Notification n = Notification.builder()
+                .device(device)
+                .actor(actor)
+                .recipient(recipient)
+                .title(title)
+                .content(content)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        notificationRepository.save(n);
+
+        mqttService.publish(
+                "users/" + recipient.getId() + "/notifications",
+                """
+                {
+                    "title":"%s",
+                    "content":"%s",
+                    "deviceName":"%s"
+                }
+                """.formatted(title, content, device.getName())
+        );
+    }
 }

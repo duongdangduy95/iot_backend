@@ -293,7 +293,7 @@ public class DeviceService {
         for (UserDevice x : users) {
             notificationService.sendNotification(
                     device,
-                    user,
+                    x.getUser(),
                     "Thiết bị thay đổi",
                     msg
             );
