@@ -62,13 +62,9 @@ public class DeviceLogService {
 
         return DeviceLogResponse.builder()
                 .id(log.getId())
-                .deviceId(log.getDevice().getId())
-                .deviceName(log.getDevice().getName())
-                .actorName(
-                        log.getActor() != null
-                                ? log.getActor().getUsername()
-                                : "Hệ thống"
-                )
+                .deviceId(log.getDevice() != null ? log.getDevice().getId() : null)
+                .deviceName(log.getDevice() != null ? log.getDevice().getName() : null)
+                .actorName(log.getActor() != null ? log.getActor().getUsername() : null)
                 .targetUserName(
                         log.getTargetUser() != null
                                 ? log.getTargetUser().getUsername()

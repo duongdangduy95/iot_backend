@@ -1,5 +1,6 @@
 package com.example.iotbackend.controller;
 
+import com.example.iotbackend.dto.NotificationResponse;
 import com.example.iotbackend.entity.Notification;
 import com.example.iotbackend.entity.User;
 import com.example.iotbackend.repository.NotificationRepository;
@@ -18,9 +19,25 @@ public class NotificationController {
     private final SecurityUtils securityUtils;
 
     @GetMapping
-    public List<Notification> getMyNotifications() {
+    public List<NotificationResponse> getMyNotifications() {
 
-        User userId = securityUtils.getCurrentUser();
-        return repository.findByRecipientIdOrderByCreatedAtDesc(userId.getId());
+        User user = securityUtils.getCurrentUser();
+
+        return repository.findByRecipientIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private NotificationResponse toResponse(Notification n) {
+
+        return NotificationResponse.builder()
+                .id(n.getId())
+                .title(n.getTitle())
+                .content(n.getContent())
+                .createdAt(n.getCreatedAt())
+                .actorName(n.getActor() != null ? n.getActor().getUsername() : null)
+                .recipientName(n.getRecipient() != null ? n.getRecipient().getUsername() : null)
+                .build();
     }
 }
