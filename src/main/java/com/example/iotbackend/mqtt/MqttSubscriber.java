@@ -59,8 +59,8 @@ public class MqttSubscriber implements MqttCallback {
         try {
             String payload = new String(message.getPayload());
 
-            System.out.println("📥 MQTT TOPIC: " + topic);
-            System.out.println("📥 MQTT PAYLOAD: " + payload);
+//            System.out.println("📥 MQTT TOPIC: " + topic);
+//            System.out.println("📥 MQTT PAYLOAD: " + payload);
 
             // PAIR REQUEST
             if (topic.equals("devices/pair/request")) {

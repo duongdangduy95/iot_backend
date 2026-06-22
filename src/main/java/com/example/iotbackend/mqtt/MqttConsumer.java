@@ -38,8 +38,8 @@ public class MqttConsumer {
             return;
         }
 
-        System.out.println("\n📩 MQTT TOPIC: " + topic);
-        System.out.println("📦 MQTT PAYLOAD: " + payload);
+//        System.out.println("\n📩 MQTT TOPIC: " + topic);
+//        System.out.println("📦 MQTT PAYLOAD: " + payload);
 
         try {
 
@@ -102,10 +102,10 @@ public class MqttConsumer {
                         ud.setRole("OWNER");
 
                         userDeviceRepository.save(ud);
-
-                        System.out.println(
-                                "✅ FIX MISSING USER_DEVICE"
-                        );
+//
+//                        System.out.println(
+//                                "✅ FIX MISSING USER_DEVICE"
+//                        );
                     }
                 }
                 if (!Boolean.TRUE.equals(device.getPaired())
@@ -119,16 +119,16 @@ public class MqttConsumer {
 
                     if (token != null) {
 
-                        System.out.println("========== PAIR DEBUG ==========");
-                        System.out.println("TOKEN      = " + token.getToken());
-                        System.out.println("USED       = " + token.getUsed());
-                        System.out.println("EXPIRED AT = " + token.getExpiredAt());
-                        System.out.println("NOW        = " + LocalDateTime.now());
-
-                        if (token.getUser() != null) {
-                            System.out.println("USER ID    = " + token.getUser().getId());
-                            System.out.println("USERNAME   = " + token.getUser().getUsername());
-                        }
+//                        System.out.println("========== PAIR DEBUG ==========");
+//                        System.out.println("TOKEN      = " + token.getToken());
+//                        System.out.println("USED       = " + token.getUsed());
+//                        System.out.println("EXPIRED AT = " + token.getExpiredAt());
+//                        System.out.println("NOW        = " + LocalDateTime.now());
+//
+//                        if (token.getUser() != null) {
+//                            System.out.println("USER ID    = " + token.getUser().getId());
+//                            System.out.println("USERNAME   = " + token.getUser().getUsername());
+//                        }
 
                         boolean valid =
                                 Boolean.FALSE.equals(token.getUsed())
@@ -169,9 +169,9 @@ public class MqttConsumer {
 
                                 userDeviceRepository.save(ud);
 
-                                System.out.println(
-                                        "✅ USER_DEVICE CREATED"
-                                );
+//                                System.out.println(
+//                                        "✅ USER_DEVICE CREATED"
+//                                );
                             }
 
                             //
@@ -180,15 +180,15 @@ public class MqttConsumer {
                             token.setUsed(true);
                             pairTokenRepository.save(token);
 
-                            System.out.println(
-                                    "✅ DEVICE PAIRED SUCCESS"
-                            );
+//                            System.out.println(
+//                                    "✅ DEVICE PAIRED SUCCESS"
+//                            );
 
                         } else {
 
-                            System.out.println(
-                                    "⚠ INVALID PAIR TOKEN"
-                            );
+//                            System.out.println(
+//                                    "⚠ INVALID PAIR TOKEN"
+//                            );
                         }
                     }
                 }
@@ -221,19 +221,19 @@ public class MqttConsumer {
                 Device device =
                         opt.get();
 
-                System.out.println("DEVICE ID   = " + device.getId());
+//                System.out.println("DEVICE ID   = " + device.getId());
 
                 if (device.getOwner() != null) {
-                    System.out.println(
-                            "OWNER ID    = "
-                                    + device.getOwner().getId()
-                    );
+//                    System.out.println(
+//                            "OWNER ID    = "
+//                                    + device.getOwner().getId()
+//                    );
                 }
 
-                System.out.println(
-                        "PAIRED      = "
-                                + device.getPaired()
-                );
+//                System.out.println(
+//                        "PAIRED      = "
+//                                + device.getPaired()
+//                );
 
                 device.setOnline(online);
                 device.setLastSeen(LocalDateTime.now());
@@ -279,10 +279,10 @@ public class MqttConsumer {
 
         } catch (Exception e) {
 
-            System.out.println(
-                    "❌ MQTT ERROR: "
-                            + e.getMessage()
-            );
+//            System.out.println(
+//                    "❌ MQTT ERROR: "
+//                            + e.getMessage()
+//            );
 
             e.printStackTrace();
         }
