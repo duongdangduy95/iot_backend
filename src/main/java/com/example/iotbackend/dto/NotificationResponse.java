@@ -1,20 +1,19 @@
 package com.example.iotbackend.dto;
 
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Data
 @Builder
 @AllArgsConstructor
-@Getter
-@Setter
+@NoArgsConstructor
 public class NotificationResponse {
 
-    private Long id;
-    private String title;
-    private String content;
+    private Long deviceId;
+    private String deviceName;
     private String actorName;
     private String recipientName;
+    private String title;
+    private String content;
     private LocalDateTime createdAt;
 }

@@ -23,6 +23,9 @@ public class Notification {
     @JoinColumn(name = "recipient_id")
     private User recipient;
 
+    @ManyToOne
+    private Device device;
+
     // người thực hiện
     @ManyToOne
     @JoinColumn(name = "actor_id")
@@ -34,6 +37,8 @@ public class Notification {
     private String content;
 
     private Boolean isRead = false;
+
+
 
     private LocalDateTime createdAt;
 }

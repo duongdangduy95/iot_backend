@@ -1,13 +1,17 @@
 package com.example.iotbackend.service;
 
+import com.example.iotbackend.entity.Device;
 import com.example.iotbackend.entity.Notification;
 import com.example.iotbackend.entity.User;
+import com.example.iotbackend.entity.UserDevice;
 import com.example.iotbackend.repository.NotificationRepository;
+import com.example.iotbackend.repository.UserDeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -15,34 +19,39 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final MqttService mqttService;
+    private final UserDeviceRepository userDeviceRepository;
      @Async
-    public void sendNotification(
-            User recipient,
-            User actor,
-            String title,
-            String content
-    ) {
+     public void sendNotification(Device device, User actor, String title, String content) {
 
-        Notification notification =
-                Notification.builder()
-                        .recipient(recipient)
-                        .actor(actor)
-                        .title(title)
-                        .content(content)
-                        .isRead(false)
-                        .createdAt(LocalDateTime.now())
-                        .build();
+         List<User> users = userDeviceRepository
+                 .findByDeviceId(device.getId())
+                 .stream()
+                 .map(UserDevice::getUser)
+                 .toList();
 
-        notificationRepository.save(notification);
+         for (User u : users) {
 
-        mqttService.publish(
-                "users/" + recipient.getId() + "/notifications",
-                """
-                {
-                    "title":"%s",
-                    "content":"%s"
-                }
-                """.formatted(title, content)
-        );
-    }
+             Notification n = Notification.builder()
+                     .device(device)   // 🔥 GẮN DEVICE
+                     .actor(actor)
+                     .recipient(u)
+                     .title(title)
+                     .content(content)
+                     .createdAt(LocalDateTime.now())
+                     .build();
+
+             notificationRepository.save(n);
+
+             mqttService.publish(
+                     "users/" + u.getId() + "/notifications",
+                     """
+                     {
+                         "title":"%s",
+                         "content":"%s",
+                         "deviceName":"%s"
+                     }
+                     """.formatted(title, content, device.getName())
+             );
+         }
+     }
 }

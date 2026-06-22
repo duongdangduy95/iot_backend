@@ -32,12 +32,13 @@ public class NotificationController {
     private NotificationResponse toResponse(Notification n) {
 
         return NotificationResponse.builder()
-                .id(n.getId())
+                .deviceId(n.getDevice() != null ? n.getDevice().getId() : null)
+                .deviceName(n.getDevice() != null ? n.getDevice().getName() : null)
+                .actorName(n.getActor() != null ? n.getActor().getUsername() : null)
+                .recipientName(n.getRecipient() != null ? n.getRecipient().getUsername() : null)
                 .title(n.getTitle())
                 .content(n.getContent())
                 .createdAt(n.getCreatedAt())
-                .actorName(n.getActor() != null ? n.getActor().getUsername() : null)
-                .recipientName(n.getRecipient() != null ? n.getRecipient().getUsername() : null)
                 .build();
     }
 }

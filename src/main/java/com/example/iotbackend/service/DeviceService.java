@@ -94,11 +94,10 @@ public class DeviceService {
         );
 
         notificationService.sendNotification(
-                user,
+                device,
                 user,
                 "Ghép thiết bị thành công",
-                "Bạn đã ghép thiết bị "
-                        + device.getName()
+                "Bạn đã ghép thiết bị " + device.getName()
         );
     }
 
@@ -219,9 +218,9 @@ public class DeviceService {
         );
 
         notificationService.sendNotification(
-                guestUser,
+                device,
                 currentUser,
-                "Thiết bị mới",
+                "Thiết bị mới được chia sẻ",
                 currentUser.getUsername()
                         + " đã chia sẻ "
                         + device.getName()
@@ -229,13 +228,11 @@ public class DeviceService {
         );
 
         notificationService.sendNotification(
-                currentUser,
+                device,
                 currentUser,
                 "Chia sẻ thành công",
-                "Bạn đã chia sẻ "
-                        + device.getName()
-                        + " cho "
-                        + guestUser.getUsername()
+                "Bạn đã chia sẻ " + device.getName()
+                        + " cho " + guestUser.getUsername()
         );
     }
 
@@ -295,10 +292,10 @@ public class DeviceService {
         for (UserDevice x : users) {
 
             notificationService.sendNotification(
-                    x.getUser(),
+                    device,
                     user,
-                    "Thiết bị thay đổi",
-                    msg
+                    "Ghép thiết bị thành công",
+                    "Bạn đã ghép thiết bị " + device.getName()
             );
         }
     }
@@ -376,21 +373,18 @@ public class DeviceService {
          );
 
          notificationService.sendNotification(
-                 guest,
+                 device,
                  currentUser,
                  "Quyền truy cập bị thu hồi",
-                 "Bạn đã bị xóa khỏi "
-                         + device.getName()
+                 "Bạn đã bị xóa khỏi " + device.getName()
          );
 
          notificationService.sendNotification(
-                 currentUser,
+                 device,
                  currentUser,
                  "Đã xóa người dùng",
-                 "Đã xóa "
-                         + guest.getUsername()
-                         + " khỏi "
-                         + device.getName()
+                 "Đã xóa " + guest.getUsername()
+                         + " khỏi " + device.getName()
          );
     }
 
@@ -435,7 +429,7 @@ public class DeviceService {
         for (UserDevice x : users) {
 
             notificationService.sendNotification(
-                    x.getUser(),
+                    device,
                     currentUser,
                     "Thiết bị đổi tên",
                     currentUser.getUsername()
