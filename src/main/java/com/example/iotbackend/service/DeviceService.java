@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import java.util.List;
 
 @Service
@@ -26,6 +27,9 @@ public class DeviceService {
 
     private final MqttService mqttService;
 
+    private final DeviceLogService deviceLogService;
+    private final NotificationService notificationService;
+
     //
     // PAIR DEVICE
     //
@@ -33,64 +37,29 @@ public class DeviceService {
             PairDeviceRequest req
     ) {
 
-        User user =
-                securityUtils.getCurrentUser();
+        User user = securityUtils.getCurrentUser();
 
-        //
-        // DEVICE EXISTS?
-        //
-        Device device =
-                deviceRepository
-                        .findByDeviceCode(
-                                req.getDeviceCode()
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Device not found"
-                                ));
+        Device device = deviceRepository.findByDeviceCode(req.getDeviceCode())
+                        .orElseThrow(() -> new RuntimeException("Device not found"));
 
-        //
-        // ALREADY OWNED?
-        //
-        boolean owned =
-                userDeviceRepository
-                        .existsByDeviceId(
-                                device.getId()
-                        );
+        boolean owned = userDeviceRepository.existsByDeviceId(device.getId());
 
         if (owned) {
-
             throw new RuntimeException(
                     "Device already paired"
             );
         }
 
-        //
-        // DISPLAY NAME
-        //
+
         device.setName(req.getName());
 
-        //
-        // GROUP
-        //
         if (req.getGroupId() != null) {
 
-            DeviceGroup group =
-                    groupRepository
-                            .findById(
-                                    req.getGroupId()
-                            )
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Group not found"
-                                    ));
+            DeviceGroup group = groupRepository.findById(req.getGroupId())
+                            .orElseThrow(() -> new RuntimeException("Group not found"));
 
-            //
-            // CHECK GROUP OWNER
-            //
-            if (!group.getUser()
-                    .getId()
-                    .equals(user.getId())) {
+
+            if (!group.getUser().getId().equals(user.getId())) {
 
                 throw new RuntimeException(
                         "Không có quyền group"
@@ -100,16 +69,10 @@ public class DeviceService {
             device.setGroup(group);
         }
 
-        //
-        // SAVE DEVICE
-        //
+
         deviceRepository.save(device);
 
-        //
-        // CREATE OWNER
-        //
-        UserDevice ud =
-                new UserDevice();
+        UserDevice ud = new UserDevice();
 
         ud.setUser(user);
 
@@ -118,11 +81,27 @@ public class DeviceService {
         ud.setRole("OWNER");
 
         userDeviceRepository.save(ud);
+
+        deviceLogService.saveLog(
+                device,
+                user,
+                null,
+                "PAIR_DEVICE",
+                user.getUsername()
+                        + " đã ghép thiết bị "
+                        + device.getName(),
+                "MOBILE"
+        );
+
+        notificationService.sendNotification(
+                user,
+                user,
+                "Ghép thiết bị thành công",
+                "Bạn đã ghép thiết bị "
+                        + device.getName()
+        );
     }
 
-    //
-    // GET MY DEVICES
-    //
     public List<Device> myDevices() {
 
         User user =
@@ -172,30 +151,16 @@ public class DeviceService {
             ShareDeviceRequest req
     ) {
 
-        User currentUser =
-                securityUtils.getCurrentUser();
+        User currentUser = securityUtils.getCurrentUser();
 
-        //
-        // FIND DEVICE
-        //
-        Device device =
-                deviceRepository
-                        .findById(req.getDeviceId())
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Device not found"
-                                ));
 
-        //
-        // CHỈ OWNER ĐƯỢC SHARE
-        //
-        if (!device.getOwner()
-                .getId()
-                .equals(currentUser.getId())) {
+        Device device = deviceRepository.findById(req.getDeviceId())
+                        .orElseThrow(() -> new RuntimeException("Device not found"));
 
-            throw new RuntimeException(
-                    "Không có quyền share"
-            );
+
+        if (!device.getOwner().getId().equals(currentUser.getId())) {
+
+            throw new RuntimeException("Không có quyền share");
         }
 
         //
@@ -239,175 +204,155 @@ public class DeviceService {
         ud.setRole("GUEST");
 
         userDeviceRepository.save(ud);
+
+        deviceLogService.saveLog(
+                device,
+                currentUser,
+                guestUser,
+                "SHARE_DEVICE",
+                currentUser.getUsername()
+                        + " đã chia sẻ "
+                        + device.getName()
+                        + " cho "
+                        + guestUser.getUsername(),
+                "MOBILE"
+        );
+
+        notificationService.sendNotification(
+                guestUser,
+                currentUser,
+                "Thiết bị mới",
+                currentUser.getUsername()
+                        + " đã chia sẻ "
+                        + device.getName()
+                        + " cho bạn"
+        );
+
+        notificationService.sendNotification(
+                currentUser,
+                currentUser,
+                "Chia sẻ thành công",
+                "Bạn đã chia sẻ "
+                        + device.getName()
+                        + " cho "
+                        + guestUser.getUsername()
+        );
     }
 
     public void controlDevice(
             ControlDeviceRequest req
     ) {
 
-        User user =
-                securityUtils.getCurrentUser();
+        User user = securityUtils.getCurrentUser();
 
-        //
-        // CHECK PERMISSION
-        //
-        UserDevice ud =
-                userDeviceRepository
-                        .findByUserIdAndDeviceId(
-                                user.getId(),
-                                req.getDeviceId()
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Không có quyền"
-                                ));
 
-        Device device =
-                ud.getDevice();
+        UserDevice ud = userDeviceRepository.findByUserIdAndDeviceId(user.getId(), req.getDeviceId())
+                        .orElseThrow(() -> new RuntimeException("Không có quyền"));
 
-        //
-        // MQTT TOPIC
-        //
-        String topic =
-                "devices/"
-                        + device.getDeviceCode()
-                        + "/set";
+        Device device = ud.getDevice();
 
-        //
-        // PAYLOAD
-        //
-        String payload =
-                """
+
+        String topic = "devices/" + device.getDeviceCode() + "/set";
+
+
+        String payload = """
                 {
                   "state": %s
                 }
                 """.formatted(req.getState());
 
-        //
-        // PUBLISH MQTT
-        //
-        mqttService.publish(
-                topic,
-                payload
-        );
 
-        //
-        // UPDATE DB
-        //
-        device.setStatus(
-                req.getState().toString()
-        );
+        mqttService.publish(topic, payload);
+
+
+        device.setStatus(req.getState().toString());
 
         deviceRepository.save(device);
+
+        String action =
+                Boolean.TRUE.equals(req.getState())
+                        ? "TURN_ON"
+                        : "TURN_OFF";
+
+        String msg =
+                user.getUsername()
+                        + (Boolean.TRUE.equals(req.getState())
+                        ? " đã bật "
+                        : " đã tắt ")
+                        + device.getName();
+
+        deviceLogService.saveLog(
+                device,
+                user,
+                null,
+                action,
+                msg,
+                "MOBILE"
+        );
+
+        List<UserDevice> users = userDeviceRepository.findByDeviceId(device.getId());
+
+        for (UserDevice x : users) {
+
+            notificationService.sendNotification(
+                    x.getUser(),
+                    user,
+                    "Thiết bị thay đổi",
+                    msg
+            );
+        }
     }
 
     public List<DeviceGuestResponse> getGuests(
             Long deviceId
     ) {
 
-        User currentUser =
-                securityUtils.getCurrentUser();
+        User currentUser = securityUtils.getCurrentUser();
 
-        //
-        // FIND DEVICE
-        //
-        Device device =
-                deviceRepository
-                        .findById(deviceId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Device not found"
-                                ));
 
-        //
-        // ONLY OWNER
-        //
-        if (!device.getOwner()
-                .getId()
-                .equals(currentUser.getId())) {
+        Device device = deviceRepository.findById(deviceId)
+                        .orElseThrow(() -> new RuntimeException("Device not found"));
 
-            throw new RuntimeException(
-                    "Không có quyền"
-            );
+
+        if (!device.getOwner().getId().equals(currentUser.getId())) {
+
+            throw new RuntimeException("Không có quyền");
         }
 
-        //
-        // GET USERS
-        //
-        List<UserDevice> list =
-                userDeviceRepository
-                        .findByDeviceId(deviceId);
 
-        //
-        // REMOVE OWNER
-        //
-        return list.stream()
+        List<UserDevice> list = userDeviceRepository.findByDeviceId(deviceId);
 
-                .filter(x ->
-                        !x.getRole()
-                                .equals("OWNER")
-                )
 
+        return list.stream().filter(x -> !x.getRole().equals("OWNER"))
                 .map(x ->
-                        new DeviceGuestResponse(
-                                x.getUser().getId(),
-                                x.getUser().getUsername(),
-                                x.getUser().getEmail(),
-                                x.getRole()
-                        )
+                        new DeviceGuestResponse(x.getUser().getId(), x.getUser().getUsername(), x.getUser().getEmail(), x.getRole())
                 )
 
                 .toList();
     }
      @Transactional
-    public void removeGuest(
-            Long deviceId,
-            Long guestUserId
-    ) {
+    public void removeGuest(Long deviceId, Long guestUserId) {
 
-        User currentUser =
-                securityUtils.getCurrentUser();
+        User currentUser = securityUtils.getCurrentUser();
 
-        //
-        // FIND DEVICE
-        //
-        Device device =
-                deviceRepository
-                        .findById(deviceId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Device not found"
-                                ));
 
-        //
-        // ONLY OWNER
-        //
-        if (!device.getOwner()
-                .getId()
-                .equals(currentUser.getId())) {
 
+        Device device = deviceRepository.findById(deviceId)
+                        .orElseThrow(() -> new RuntimeException("Device not found"));
+
+
+        if (!device.getOwner().getId().equals(currentUser.getId())) {
             throw new RuntimeException(
                     "Không có quyền"
             );
         }
 
-        //
-        // FIND USER DEVICE
-        //
-        UserDevice ud =
-                userDeviceRepository
-                        .findByUserIdAndDeviceId(
-                                guestUserId,
-                                deviceId
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Guest not found"
-                                ));
 
-        //
-        // KHÔNG CHO XÓA OWNER
-        //
+        UserDevice ud = userDeviceRepository.findByUserIdAndDeviceId(guestUserId, deviceId)
+                        .orElseThrow(() -> new RuntimeException("Guest not found"));
+
+
+         User guest = ud.getUser();
         if (ud.getRole().equals("OWNER")) {
 
             throw new RuntimeException(
@@ -415,51 +360,92 @@ public class DeviceService {
             );
         }
 
-        //
-        // DELETE
-        //
-        userDeviceRepository
-                .deleteByUserIdAndDeviceId(
-                        guestUserId,
-                        deviceId
-                );
+
+        userDeviceRepository.deleteByUserIdAndDeviceId(guestUserId, deviceId);
+         deviceLogService.saveLog(
+                 device,
+                 currentUser,
+                 guest,
+                 "REMOVE_GUEST",
+                 currentUser.getUsername()
+                         + " đã xóa "
+                         + guest.getUsername()
+                         + " khỏi "
+                         + device.getName(),
+                 "MOBILE"
+         );
+
+         notificationService.sendNotification(
+                 guest,
+                 currentUser,
+                 "Quyền truy cập bị thu hồi",
+                 "Bạn đã bị xóa khỏi "
+                         + device.getName()
+         );
+
+         notificationService.sendNotification(
+                 currentUser,
+                 currentUser,
+                 "Đã xóa người dùng",
+                 "Đã xóa "
+                         + guest.getUsername()
+                         + " khỏi "
+                         + device.getName()
+         );
     }
 
     public void renameDevice(
             RenameDeviceRequest req
     ) {
 
-        User currentUser =
-                securityUtils.getCurrentUser();
+        User currentUser = securityUtils.getCurrentUser();
 
-        Device device =
-                deviceRepository
-                        .findById(
-                                req.getDeviceId()
-                        )
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Device not found"
-                                ));
+        Device device = deviceRepository.findById(req.getDeviceId())
+                        .orElseThrow(() -> new RuntimeException("Device not found"));
 
-        //
-        // ONLY OWNER
-        //
-        if (!device.getOwner()
-                .getId()
-                .equals(currentUser.getId())) {
+
+        if (!device.getOwner().getId().equals(currentUser.getId())) {
 
             throw new RuntimeException(
                     "Không có quyền đổi tên thiết bị"
             );
         }
 
-        device.setName(
-                req.getName()
+        String oldName = device.getName();
+
+        device.setName(req.getName());
+        deviceRepository.save(device);
+
+        deviceLogService.saveLog(
+                device,
+                currentUser,
+                null,
+                "RENAME_DEVICE",
+                currentUser.getUsername()
+                        + " đã đổi tên "
+                        + oldName
+                        + " thành "
+                        + req.getName(),
+                "MOBILE"
         );
 
-        deviceRepository.save(
-                device
-        );
+        List<UserDevice> users =
+                userDeviceRepository.findByDeviceId(device.getId());
+
+        for (UserDevice x : users) {
+
+            notificationService.sendNotification(
+                    x.getUser(),
+                    currentUser,
+                    "Thiết bị đổi tên",
+                    currentUser.getUsername()
+                            + " đã đổi tên "
+                            + oldName
+                            + " thành "
+                            + req.getName()
+            );
+        }
+
+        deviceRepository.save(device);
     }
 }

@@ -1,9 +1,12 @@
 package com.example.iotbackend.service;
 
 import com.example.iotbackend.dto.DeviceScheduleRequest;
+import com.example.iotbackend.entity.Device;
 import com.example.iotbackend.entity.DeviceSchedule;
 import com.example.iotbackend.entity.User;
+import com.example.iotbackend.entity.UserDevice;
 import com.example.iotbackend.mqtt.DeviceScheduleRunner;
+import com.example.iotbackend.repository.DeviceRepository;
 import com.example.iotbackend.repository.DeviceScheduleRepository;
 import com.example.iotbackend.repository.UserDeviceRepository;
 import com.example.iotbackend.security.SecurityUtils;
@@ -23,6 +26,9 @@ public class DeviceScheduleService {
     private final SecurityUtils securityUtils;
     private final AuthService authService;
     private final UserDeviceRepository userDeviceRepository;
+    private final DeviceRepository deviceRepository;
+    private final DeviceLogService deviceLogService;
+    private final NotificationService notificationService;
 
     // CREATE SCHEDULE
     public DeviceSchedule create(DeviceScheduleRequest req) {
@@ -40,7 +46,32 @@ public class DeviceScheduleService {
         s.setEnabled(req.getEnabled());
         s.setUserId(user.getId());
 
-        return repo.save(s);
+        DeviceSchedule saved = repo.save(s);
+
+        Device device = deviceRepository
+                .findById(req.getDeviceId())
+                .orElseThrow();
+
+        deviceLogService.saveLog(
+                device,
+                user,
+                null,
+                "CREATE_SCHEDULE",
+                user.getUsername()
+                        + " đã tạo lịch cho "
+                        + device.getName(),
+                "MOBILE"
+        );
+
+        notificationService.sendNotification(
+                user,
+                user,
+                "Tạo lịch thành công",
+                "Đã tạo lịch cho "
+                        + device.getName()
+        );
+
+        return saved;
     }
 
     // GET MY SCHEDULES
@@ -79,7 +110,9 @@ public class DeviceScheduleService {
             }
 
             // ================= BẬT =================
-
+            Device device = deviceRepository
+                    .findById(s.getDeviceId())
+                    .orElseThrow();
             if (s.getStartTime() != null
                     && !today.equals(s.getLastRunStart())
                     && now.equals(
@@ -88,6 +121,33 @@ public class DeviceScheduleService {
                             .withNano(0))) {
 
                 runner.turnOn(s.getDeviceId());
+
+
+                String msg =
+                        "Hệ thống tự động bật "
+                                + device.getName();
+
+                deviceLogService.saveLog(
+                        device,
+                        null,
+                        null,
+                        "AUTO_TURN_ON",
+                        msg,
+                        "SCHEDULE"
+                );
+
+                List<UserDevice> users =
+                        userDeviceRepository.findByDeviceId(device.getId());
+
+                for (UserDevice x : users) {
+
+                    notificationService.sendNotification(
+                            x.getUser(),
+                            null,
+                            "Lịch tự động",
+                            msg
+                    );
+                }
 
                 s.setLastRunStart(today);
 
@@ -111,6 +171,19 @@ public class DeviceScheduleService {
                             .withNano(0))) {
 
                 runner.turnOff(s.getDeviceId());
+
+                String msg =
+                        "Hệ thống tự động tắt "
+                                + device.getName();
+
+                deviceLogService.saveLog(
+                        device,
+                        null,
+                        null,
+                        "AUTO_TURN_OFF",
+                        msg,
+                        "SCHEDULE"
+                );
 
                 s.setLastRunEnd(today);
 

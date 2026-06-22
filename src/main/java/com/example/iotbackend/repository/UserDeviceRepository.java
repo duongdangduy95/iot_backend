@@ -1,6 +1,6 @@
 package com.example.iotbackend.repository;
 
-import com.example.iotbackend.entity.Device;
+import com.example.iotbackend.entity.User;
 import com.example.iotbackend.entity.UserDevice;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -23,5 +23,7 @@ public interface UserDeviceRepository extends JpaRepository<UserDevice, Long> {
     Optional<UserDevice> findByUserIdAndDeviceId(Long userId, Long deviceId);
 
     void deleteByUserIdAndDeviceId(Long userId, Long deviceId);
+
+    List<UserDevice> findByUser(User user);
 
 }

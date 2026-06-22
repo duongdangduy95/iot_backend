@@ -11,7 +11,7 @@ public class DeviceScheduleEngine {
 
     private final DeviceScheduleService service;
 
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 3000)
     public void run() {
         service.processSchedules();
     }
