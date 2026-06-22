@@ -287,15 +287,15 @@ public class DeviceService {
                 "MOBILE"
         );
 
+
         List<UserDevice> users = userDeviceRepository.findByDeviceId(device.getId());
 
         for (UserDevice x : users) {
-
             notificationService.sendNotification(
                     device,
                     user,
-                    "Ghép thiết bị thành công",
-                    "Bạn đã ghép thiết bị " + device.getName()
+                    "Thiết bị thay đổi",
+                    msg
             );
         }
     }
