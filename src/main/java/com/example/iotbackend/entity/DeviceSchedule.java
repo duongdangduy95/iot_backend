@@ -36,6 +36,8 @@ public class DeviceSchedule {
     // MON,TUE,WED
     private String daysOfWeek;
 
+    private LocalDate executeDate;
+
     private Boolean enabled = true;
 
     private LocalDate lastRunStart;

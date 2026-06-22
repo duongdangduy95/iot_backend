@@ -36,6 +36,7 @@ public class DeviceScheduleService {
         s.setEndTime(req.getEndTime());
         s.setType(req.getType());
         s.setDaysOfWeek(req.getDaysOfWeek());
+        s.setExecuteDate(req.getExecuteDate());
         s.setEnabled(req.getEnabled());
         s.setUserId(user.getId());
 
@@ -65,40 +66,64 @@ public class DeviceScheduleService {
     public void processSchedules() {
 
         LocalDate today = LocalDate.now();
+
         LocalTime now = LocalTime.now()
                 .withSecond(0)
                 .withNano(0);
 
         for (DeviceSchedule s : repo.findByEnabledTrue()) {
 
-            if (!isValidDay(s, today)) continue;
+            // kiểm tra lịch có hợp lệ hôm nay không
+            if (!isValidDay(s, today)) {
+                continue;
+            }
 
-            // BẬT
+            // ================= BẬT =================
+
             if (s.getStartTime() != null
                     && !today.equals(s.getLastRunStart())
-                    && !now.isBefore(s.getStartTime())
-                    && now.isBefore(s.getStartTime().plusSeconds(1))) {
+                    && now.equals(
+                    s.getStartTime()
+                            .withSecond(0)
+                            .withNano(0))) {
 
                 runner.turnOn(s.getDeviceId());
 
                 s.setLastRunStart(today);
+
+                // nếu là ONCE và không có giờ tắt
+                if ("ONCE".equals(s.getType())
+                        && s.getEndTime() == null) {
+
+                    s.setEnabled(false);
+                }
+
                 repo.save(s);
             }
 
-            // TẮT
+            // ================= TẮT =================
+
             if (s.getEndTime() != null
                     && !today.equals(s.getLastRunEnd())
-                    && !now.isBefore(s.getEndTime())
-                    && now.isBefore(s.getEndTime().plusSeconds(1))) {
+                    && now.equals(
+                    s.getEndTime()
+                            .withSecond(0)
+                            .withNano(0))) {
 
                 runner.turnOff(s.getDeviceId());
 
                 s.setLastRunEnd(today);
+
+                // lịch chạy 1 lần
+                if ("ONCE".equals(s.getType())) {
+
+                    s.setEnabled(false);
+                }
+
                 repo.save(s);
             }
         }
     }
-
     private boolean isValidDay(DeviceSchedule s, LocalDate date) {
 
         if ("DAILY".equals(s.getType())) return true;
