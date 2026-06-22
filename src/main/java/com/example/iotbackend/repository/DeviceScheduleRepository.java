@@ -10,4 +10,6 @@ public interface DeviceScheduleRepository
     List<DeviceSchedule> findByUserId(Long userId);
 
     List<DeviceSchedule> findByEnabledTrue();
+
+    List<DeviceSchedule> findByDeviceId(Long deviceId);
 }

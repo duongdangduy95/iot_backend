@@ -5,11 +5,13 @@ import com.example.iotbackend.entity.DeviceSchedule;
 import com.example.iotbackend.entity.User;
 import com.example.iotbackend.mqtt.DeviceScheduleRunner;
 import com.example.iotbackend.repository.DeviceScheduleRepository;
+import com.example.iotbackend.repository.UserDeviceRepository;
 import com.example.iotbackend.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
+import java.util.List;
 
 
 @Service
@@ -19,6 +21,8 @@ public class DeviceScheduleService {
     private final DeviceScheduleRepository repo;
     private final DeviceScheduleRunner runner;
     private final SecurityUtils securityUtils;
+    private final AuthService authService;
+    private final UserDeviceRepository userDeviceRepository;
 
     // CREATE SCHEDULE
     public DeviceSchedule create(DeviceScheduleRequest req) {
@@ -39,11 +43,22 @@ public class DeviceScheduleService {
     }
 
     // GET MY SCHEDULES
-    public java.util.List<DeviceSchedule> getMySchedules() {
+    public List<DeviceSchedule> getSchedulesByDevice(Long deviceId) {
 
         User user = securityUtils.getCurrentUser();
 
-        return repo.findByUserId(user.getId());
+        // kiểm tra quyền sở hữu hoặc được share
+        boolean hasPermission =
+                userDeviceRepository.existsByUserIdAndDeviceId(
+                        user.getId(),
+                        deviceId
+                );
+
+        if (!hasPermission) {
+            throw new RuntimeException("Bạn không có quyền truy cập thiết bị này");
+        }
+
+        return repo.findByDeviceId(deviceId);
     }
 
     // CORE LOGIC

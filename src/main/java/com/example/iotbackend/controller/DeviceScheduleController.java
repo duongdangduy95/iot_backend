@@ -22,9 +22,11 @@ public class DeviceScheduleController {
         return service.create(req);
     }
 
-    @GetMapping
-    public List<DeviceSchedule> getMySchedules() {
-        return service.getMySchedules();
+    @GetMapping("/device/{deviceId}")
+    public List<DeviceSchedule> getSchedulesByDevice(
+            @PathVariable Long deviceId) {
+
+        return service.getSchedulesByDevice(deviceId);
     }
 
     @DeleteMapping("/{id}")

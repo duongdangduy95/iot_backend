@@ -14,14 +14,14 @@ public class DeviceScheduleRunner {
     private final DeviceRepository deviceRepository;
 
     public void turnOn(Long deviceId) {
-        send(deviceId, "ON");
+        send(deviceId, true);
     }
 
     public void turnOff(Long deviceId) {
-        send(deviceId, "OFF");
+        send(deviceId, false);
     }
 
-    private void send(Long deviceId, String state) {
+    private void send(Long deviceId, boolean state) {
 
         Device device = deviceRepository.findById(deviceId)
                 .orElseThrow();
@@ -29,12 +29,14 @@ public class DeviceScheduleRunner {
         String topic = "devices/" + device.getDeviceCode() + "/set";
 
         String payload = """
-                { "state": "%s" }
-                """.formatted(state);
+            { "state": %s }
+            """.formatted(state);
 
         mqttService.publish(topic, payload);
 
-        device.setStatus(state);
+        // cập nhật trạng thái DB
+        device.setStatus(state ? "ON" : "OFF");
+
         deviceRepository.save(device);
     }
 }
