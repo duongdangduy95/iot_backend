@@ -27,123 +27,75 @@ public class DeviceController {
     private final PairTokenRepository pairTokenRepository;
 
 
-    //
-    // PAIR DEVICE WITH CURRENT USER
-    //
+
     @PostMapping("/pair")
-    public ResponseEntity<?> pairDevice(
-            @RequestBody PairDeviceRequest req
-    ) {
+    public ResponseEntity<?> pairDevice(@RequestBody PairDeviceRequest req) {
 
         deviceService.pairDevice(req);
 
-        return ResponseEntity.ok(
-                "Device paired successfully"
-        );
+        return ResponseEntity.ok("Device paired successfully");
     }
 
-    //
-    // GET MY DEVICES
-    //
+
     @GetMapping
     public ResponseEntity<?> myDevices() {
-
-        return ResponseEntity.ok(
-                deviceService.myDevices()
-        );
+        return ResponseEntity.ok(deviceService.myDevices());
     }
 
     @GetMapping("/my")
     public List<DeviceResponse> getMyDevices() {
-
         return deviceService.getMyDevices();
     }
 
     @PostMapping("/pair-token")
-    public ResponseEntity<?> createToken(
-            Authentication authentication
-    ) {
+    public ResponseEntity<?> createToken(Authentication authentication) {
 
-        WebUserDetails webUserDetails =
-                (WebUserDetails) authentication.getPrincipal();
+        WebUserDetails webUserDetails = (WebUserDetails) authentication.getPrincipal();
 
         User user = webUserDetails.getUser();
 
         PairToken token = new PairToken();
 
-        token.setToken(
-                UUID.randomUUID().toString()
-        );
-
+        token.setToken(UUID.randomUUID().toString());
         token.setUser(user);
-
         token.setUsed(false);
-
-        token.setExpiredAt(
-                LocalDateTime.now().plusMinutes(5)
-        );
-
-        System.out.println("CREATE NOW = " + LocalDateTime.now());
-        System.out.println("EXPIRE     = " + LocalDateTime.now().plusMinutes(5));
+        token.setExpiredAt(LocalDateTime.now().plusMinutes(5));
 
         pairTokenRepository.save(token);
 
-        return ResponseEntity.ok(
-                token.getToken()
-        );
+        return ResponseEntity.ok(token.getToken());
     }
 
     @PostMapping("/share")
-    public String shareDevice(
-            @RequestBody ShareDeviceRequest req
-    ) {
+    public String shareDevice(@RequestBody ShareDeviceRequest req) {
 
         deviceService.shareDevice(req);
-
         return "Share success";
     }
 
     @PostMapping("/control")
-    public String controlDevice(
-            @RequestBody ControlDeviceRequest req
-    ) {
+    public String controlDevice(@RequestBody ControlDeviceRequest req) {
 
         deviceService.controlDevice(req);
-
         return "OK";
     }
 
     @GetMapping("/{deviceId}/guests")
-    public List<DeviceGuestResponse> getGuests(
-            @PathVariable Long deviceId
-    ) {
+    public List<DeviceGuestResponse> getGuests(@PathVariable Long deviceId) {
 
-        return deviceService.getGuests(
-                deviceId
-        );
+        return deviceService.getGuests(deviceId);
     }
 
     @DeleteMapping("/{deviceId}/guest/{guestUserId}")
-    public String removeGuest(
-            @PathVariable Long deviceId,
-            @PathVariable Long guestUserId
-    ) {
+    public String removeGuest(@PathVariable Long deviceId, @PathVariable Long guestUserId) {
 
-        deviceService.removeGuest(
-                deviceId,
-                guestUserId
-        );
-
+        deviceService.removeGuest(deviceId, guestUserId);
         return "Removed";
     }
 
     @PostMapping("/rename")
-    public String renameDevice(
-            @RequestBody RenameDeviceRequest req
-    ) {
-
+    public String renameDevice(@RequestBody RenameDeviceRequest req) {
         deviceService.renameDevice(req);
-
         return "Rename success";
     }
 }

@@ -18,13 +18,7 @@ public class VoiceController {
     private final VoiceControlService voiceControlService;
 
     @PostMapping("/control")
-    public ResponseEntity<VoiceControlResponse> control(
-            @RequestParam("file")
-            MultipartFile file
-    ) {
-
-        return ResponseEntity.ok(
-                voiceControlService.processVoice(file)
-        );
+    public ResponseEntity<VoiceControlResponse> control(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(voiceControlService.processVoice(file));
     }
 }

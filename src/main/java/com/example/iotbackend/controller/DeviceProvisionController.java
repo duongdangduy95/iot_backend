@@ -27,9 +27,7 @@ public class DeviceProvisionController {
         PairToken token = new PairToken();
 
         token.setToken(UUID.randomUUID().toString());
-
         token.setUser(user);
-
         token.setExpiredAt(LocalDateTime.now().plusMinutes(5));
 
         pairTokenRepository.save(token);

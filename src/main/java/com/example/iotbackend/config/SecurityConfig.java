@@ -20,15 +20,13 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    public PasswordEncoder passwordEncoder() {return new BCryptPasswordEncoder();}
 
-    // 🌟 1. ĐỊNH NGHĨA BEAN CORS ĐỘC LẬP (ÉP SPRING SECURITY ĐỒNG BỘ TOÀN DIỆN)
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); // Mở hoàn toàn cho mọi thiết bị ngoại vi
+        configuration.setAllowedOrigins(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
         configuration.setExposedHeaders(List.of("Authorization"));
@@ -41,7 +39,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 🌟 2. TRUYỀN BEAN CẤU HÌNH VÀO ĐÂY
+
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 // Vô hiệu hóa CSRF an toàn

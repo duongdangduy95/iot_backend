@@ -33,13 +33,13 @@ public class MqttConfig {
         options.setUserName(username);
         options.setPassword(password.toCharArray());
 
-        // ================= FIX QUAN TRỌNG =================
-        options.setAutomaticReconnect(true);   // 🔥 bắt buộc
-        options.setCleanSession(false);        // 🔥 giữ session khi reconnect
-        options.setKeepAliveInterval(30);      // ổn định connection
+
+        options.setAutomaticReconnect(true);
+        options.setCleanSession(false);
+        options.setKeepAliveInterval(30);
         options.setConnectionTimeout(10);
 
-        // SSL nếu dùng broker secure
+
         options.setSocketFactory(SSLSocketFactory.getDefault());
 
         return options;

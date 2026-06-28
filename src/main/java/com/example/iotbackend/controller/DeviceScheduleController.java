@@ -23,9 +23,7 @@ public class DeviceScheduleController {
     }
 
     @GetMapping("/device/{deviceId}")
-    public List<DeviceSchedule> getSchedulesByDevice(
-            @PathVariable Long deviceId) {
-
+    public List<DeviceSchedule> getSchedulesByDevice(@PathVariable Long deviceId) {
         return service.getSchedulesByDevice(deviceId);
     }
 

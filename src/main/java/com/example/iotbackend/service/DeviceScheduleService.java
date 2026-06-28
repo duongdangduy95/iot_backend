@@ -25,9 +25,6 @@ public class DeviceScheduleService {
     private final DeviceLogService deviceLogService;
     private final NotificationService notificationService;
 
-    // =========================
-    // CREATE SCHEDULE
-    // =========================
     public DeviceSchedule create(DeviceScheduleRequest req) {
 
         User user = securityUtils.getCurrentUser();
@@ -55,28 +52,13 @@ public class DeviceScheduleService {
 
         String msg = user.getUsername() + " đã tạo lịch cho " + device.getName();
 
-        deviceLogService.saveLog(
-                device,
-                user,
-                null,
-                "CREATE_SCHEDULE",
-                msg,
-                "MOBILE"
-        );
+        deviceLogService.saveLog(device, user, null, "CREATE_SCHEDULE", msg, "MOBILE");
 
-        notificationService.sendNotification(
-                device,
-                user,
-                "Tạo lịch thành công",
-                msg
-        );
+        notificationService.sendNotification(device, user, "Tạo lịch thành công", msg);
 
         return saved;
     }
 
-    // =========================
-    // GET SCHEDULES
-    // =========================
     public List<DeviceSchedule> getSchedulesByDevice(Long deviceId) {
 
         User user = securityUtils.getCurrentUser();
@@ -91,9 +73,7 @@ public class DeviceScheduleService {
         return repo.findByDeviceId(deviceId);
     }
 
-    // =========================
-    // CORE SCHEDULER
-    // =========================
+
     public void processSchedules() {
 
         LocalDate today = LocalDate.now();
@@ -108,9 +88,7 @@ public class DeviceScheduleService {
             Device device = deviceRepository.findById(s.getDeviceId())
                     .orElseThrow(() -> new RuntimeException("Device not found"));
 
-            // =========================
-            // TURN ON
-            // =========================
+
             if (s.getStartTime() != null
                     && !today.equals(s.getLastRunStart())
                     && now.equals(s.getStartTime().withSecond(0).withNano(0))) {
@@ -119,14 +97,7 @@ public class DeviceScheduleService {
 
                 String msg = "Hệ thống tự động bật " + device.getName();
 
-                deviceLogService.saveLog(
-                        device,
-                        null,
-                        null,
-                        "AUTO_TURN_ON",
-                        msg,
-                        "SCHEDULE"
-                );
+                deviceLogService.saveLog(device, null, null, "AUTO_TURN_ON", msg, "SCHEDULE");
 
                 notifyAllUsers(device, msg, "Lịch tự động");
 
@@ -140,9 +111,6 @@ public class DeviceScheduleService {
                 repo.save(s);
             }
 
-            // =========================
-            // TURN OFF
-            // =========================
             if (s.getEndTime() != null
                     && !today.equals(s.getLastRunEnd())
                     && now.equals(s.getEndTime().withSecond(0).withNano(0))) {
@@ -151,31 +119,20 @@ public class DeviceScheduleService {
 
                 String msg = "Hệ thống tự động tắt " + device.getName();
 
-                deviceLogService.saveLog(
-                        device,
-                        null,
-                        null,
-                        "AUTO_TURN_OFF",
-                        msg,
-                        "SCHEDULE"
-                );
+                deviceLogService.saveLog(device, null, null, "AUTO_TURN_OFF", msg, "SCHEDULE");
 
                 notifyAllUsers(device, msg, "Lịch tự động");
 
                 s.setLastRunEnd(today);
 
-                if ("ONCE".equals(s.getType())) {
-                    s.setEnabled(false);
-                }
+                if ("ONCE".equals(s.getType())) {s.setEnabled(false);}
 
                 repo.save(s);
             }
         }
     }
 
-    // =========================
-    // NOTIFY ALL DEVICE USERS
-    // =========================
+
     private void notifyAllUsers(Device device, String msg, String title) {
 
         List<User> users = userDeviceRepository.findByDeviceId(device.getId())
@@ -183,19 +140,9 @@ public class DeviceScheduleService {
                 .map(UserDevice::getUser)
                 .toList();
 
-        for (User u : users) {
-            notificationService.sendNotification(
-                    device,
-                    null,
-                    title,
-                    msg
-            );
-        }
+        for (User u : users) {notificationService.sendNotification(device, null, title, msg);}
     }
 
-    // =========================
-    // VALID DAY CHECK
-    // =========================
     private boolean isValidDay(DeviceSchedule s, LocalDate date) {
 
         if ("DAILY".equals(s.getType())) return true;
@@ -203,9 +150,7 @@ public class DeviceScheduleService {
         if ("WEEKLY".equals(s.getType()) && s.getDaysOfWeek() != null) {
 
             DayOfWeek dow = date.getDayOfWeek();
-
-            return s.getDaysOfWeek()
-                    .contains(dow.name().substring(0, 3));
+            return s.getDaysOfWeek().contains(dow.name().substring(0, 3));
         }
 
         return true;

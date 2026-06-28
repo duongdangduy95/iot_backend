@@ -30,12 +30,7 @@ public class DeviceService {
     private final DeviceLogService deviceLogService;
     private final NotificationService notificationService;
 
-    //
-    // PAIR DEVICE
-    //
-    public void pairDevice(
-            PairDeviceRequest req
-    ) {
+    public void pairDevice(PairDeviceRequest req) {
 
         User user = securityUtils.getCurrentUser();
 
@@ -44,11 +39,7 @@ public class DeviceService {
 
         boolean owned = userDeviceRepository.existsByDeviceId(device.getId());
 
-        if (owned) {
-            throw new RuntimeException(
-                    "Device already paired"
-            );
-        }
+        if (owned) { throw new RuntimeException("Device already paired");}
 
 
         device.setName(req.getName());
@@ -60,10 +51,7 @@ public class DeviceService {
 
 
             if (!group.getUser().getId().equals(user.getId())) {
-
-                throw new RuntimeException(
-                        "Không có quyền group"
-                );
+                throw new RuntimeException("Không có quyền group");
             }
 
             device.setGroup(group);
@@ -75,64 +63,35 @@ public class DeviceService {
         UserDevice ud = new UserDevice();
 
         ud.setUser(user);
-
         ud.setDevice(device);
-
         ud.setRole("OWNER");
 
         userDeviceRepository.save(ud);
 
-        deviceLogService.saveLog(
-                device,
-                user,
-                null,
-                "PAIR_DEVICE",
-                user.getUsername()
-                        + " đã ghép thiết bị "
-                        + device.getName(),
-                "MOBILE"
-        );
+        deviceLogService.saveLog(device, user, null, "PAIR_DEVICE", user.getUsername() + " đã ghép thiết bị " + device.getName(), "MOBILE");
 
-        notificationService.sendNotification(
-                device,
-                user,
-                "Ghép thiết bị thành công",
-                "Bạn đã ghép thiết bị " + device.getName()
-        );
+        notificationService.sendNotification(device, user, "Ghép thiết bị thành công", "Bạn đã ghép thiết bị " + device.getName());
     }
 
     public List<Device> myDevices() {
 
-        User user =
-                securityUtils.getCurrentUser();
+        User user = securityUtils.getCurrentUser();
 
-        List<UserDevice> list =
-                userDeviceRepository
-                        .findByUserId(
-                                user.getId()
-                        );
-
-        return list.stream()
-                .map(UserDevice::getDevice)
-                .toList();
+        List<UserDevice> list = userDeviceRepository.findByUserId(user.getId());
+        return list.stream().map(UserDevice::getDevice).toList();
     }
 
     public List<DeviceResponse> getMyDevices() {
 
-        User user =
-                securityUtils.getCurrentUser();
+        User user = securityUtils.getCurrentUser();
 
-        List<UserDevice> userDevices =
-                userDeviceRepository.findByUserId(
-                        user.getId()
-                );
+        List<UserDevice> userDevices = userDeviceRepository.findByUserId(user.getId());
 
         return userDevices.stream()
                 .map(UserDevice::getDevice)
                 .map(device -> {
 
-                    DeviceResponse res =
-                            new DeviceResponse();
+                    DeviceResponse res = new DeviceResponse();
 
                     res.setId(device.getId());
                     res.setDeviceCode(device.getDeviceCode());
@@ -146,9 +105,7 @@ public class DeviceService {
                 .toList();
     }
 
-    public void shareDevice(
-            ShareDeviceRequest req
-    ) {
+    public void shareDevice(ShareDeviceRequest req) {
 
         User currentUser = securityUtils.getCurrentUser();
 
@@ -162,83 +119,32 @@ public class DeviceService {
             throw new RuntimeException("Không có quyền share");
         }
 
-        //
-        // FIND USER BY EMAIL
-        //
-        User guestUser =
-                userRepository
-                        .findByEmail(req.getEmail())
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "User not found"
-                                ));
+        User guestUser = userRepository.findByEmail(req.getEmail())
+                        .orElseThrow(() -> new RuntimeException("User not found"));
 
-        //
-        // ĐÃ ĐƯỢC SHARE?
-        //
-        boolean exists =
-                userDeviceRepository
-                        .existsByUserIdAndDeviceId(
-                                guestUser.getId(),
-                                device.getId()
-                        );
+
+        boolean exists = userDeviceRepository.existsByUserIdAndDeviceId(guestUser.getId(), device.getId());
 
         if (exists) {
-
-            throw new RuntimeException(
-                    "User already has device"
-            );
+            throw new RuntimeException("User already has device");
         }
 
-        //
-        // CREATE GUEST
-        //
-        UserDevice ud =
-                new UserDevice();
+        UserDevice ud = new UserDevice();
 
         ud.setUser(guestUser);
-
         ud.setDevice(device);
-
         ud.setRole("GUEST");
 
         userDeviceRepository.save(ud);
 
-        deviceLogService.saveLog(
-                device,
-                currentUser,
-                guestUser,
-                "SHARE_DEVICE",
-                currentUser.getUsername()
-                        + " đã chia sẻ "
-                        + device.getName()
-                        + " cho "
-                        + guestUser.getUsername(),
-                "MOBILE"
-        );
+        deviceLogService.saveLog(device, currentUser, guestUser, "SHARE_DEVICE", currentUser.getUsername() + " đã chia sẻ " + device.getName() + " cho " + guestUser.getUsername(), "MOBILE");
 
-        notificationService.sendNotification(
-                device,
-                currentUser,
-                "Thiết bị mới được chia sẻ",
-                currentUser.getUsername()
-                        + " đã chia sẻ "
-                        + device.getName()
-                        + " cho bạn"
-        );
+        notificationService.sendNotification(device, currentUser, "Thiết bị mới được chia sẻ", currentUser.getUsername() + " đã chia sẻ " + device.getName() + " cho bạn");
 
-        notificationService.sendNotification(
-                device,
-                currentUser,
-                "Chia sẻ thành công",
-                "Bạn đã chia sẻ " + device.getName()
-                        + " cho " + guestUser.getUsername()
-        );
+        notificationService.sendNotification(device, currentUser, "Chia sẻ thành công", "Bạn đã chia sẻ " + device.getName() + " cho " + guestUser.getUsername());
     }
 
-    public void controlDevice(
-            ControlDeviceRequest req
-    ) {
+    public void controlDevice(ControlDeviceRequest req) {
 
         User user = securityUtils.getCurrentUser();
 
@@ -250,7 +156,6 @@ public class DeviceService {
 
 
         String topic = "devices/" + device.getDeviceCode() + "/set";
-
 
         String payload = """
                 {
@@ -266,43 +171,21 @@ public class DeviceService {
 
         deviceRepository.save(device);
 
-        String action =
-                Boolean.TRUE.equals(req.getState())
-                        ? "TURN_ON"
-                        : "TURN_OFF";
+        String action = Boolean.TRUE.equals(req.getState()) ? "TURN_ON" : "TURN_OFF";
 
-        String msg =
-                user.getUsername()
-                        + (Boolean.TRUE.equals(req.getState())
-                        ? " đã bật "
-                        : " đã tắt ")
-                        + device.getName();
+        String msg = user.getUsername() + (Boolean.TRUE.equals(req.getState()) ? " đã bật " : " đã tắt ") + device.getName();
 
-        deviceLogService.saveLog(
-                device,
-                user,
-                null,
-                action,
-                msg,
-                "MOBILE"
-        );
+        deviceLogService.saveLog(device, user, null, action, msg, "MOBILE");
 
 
         List<UserDevice> users = userDeviceRepository.findByDeviceId(device.getId());
 
         for (UserDevice x : users) {
-            notificationService.sendNotification(
-                    device,
-                    x.getUser(),
-                    "Thiết bị thay đổi",
-                    msg
-            );
+            notificationService.sendNotification(device, x.getUser(), "Thiết bị thay đổi", msg);
         }
     }
 
-    public List<DeviceGuestResponse> getGuests(
-            Long deviceId
-    ) {
+    public List<DeviceGuestResponse> getGuests(Long deviceId) {
 
         User currentUser = securityUtils.getCurrentUser();
 
@@ -312,19 +195,14 @@ public class DeviceService {
 
 
         if (!device.getOwner().getId().equals(currentUser.getId())) {
-
             throw new RuntimeException("Không có quyền");
         }
-
-
         List<UserDevice> list = userDeviceRepository.findByDeviceId(deviceId);
-
 
         return list.stream().filter(x -> !x.getRole().equals("OWNER"))
                 .map(x ->
                         new DeviceGuestResponse(x.getUser().getId(), x.getUser().getUsername(), x.getUser().getEmail(), x.getRole())
                 )
-
                 .toList();
     }
      @Transactional
@@ -332,26 +210,17 @@ public class DeviceService {
 
         User currentUser = securityUtils.getCurrentUser();
 
-
-
         Device device = deviceRepository.findById(deviceId)
                         .orElseThrow(() -> new RuntimeException("Device not found"));
 
-
         if (!device.getOwner().getId().equals(currentUser.getId())) {
-            throw new RuntimeException(
-                    "Không có quyền"
-            );
+            throw new RuntimeException("Không có quyền");
         }
-
-
         UserDevice ud = userDeviceRepository.findByUserIdAndDeviceId(guestUserId, deviceId)
                         .orElseThrow(() -> new RuntimeException("Guest not found"));
 
-
-         User guest = ud.getUser();
+        User guest = ud.getUser();
         if (ud.getRole().equals("OWNER")) {
-
             throw new RuntimeException(
                     "Không thể xóa owner"
             );
@@ -359,38 +228,13 @@ public class DeviceService {
 
 
         userDeviceRepository.deleteByUserIdAndDeviceId(guestUserId, deviceId);
-         deviceLogService.saveLog(
-                 device,
-                 currentUser,
-                 guest,
-                 "REMOVE_GUEST",
-                 currentUser.getUsername()
-                         + " đã xóa "
-                         + guest.getUsername()
-                         + " khỏi "
-                         + device.getName(),
-                 "MOBILE"
-         );
+         deviceLogService.saveLog(device, currentUser, guest, "REMOVE_GUEST", currentUser.getUsername() + " đã xóa " + guest.getUsername() + " khỏi " + device.getName(), "MOBILE");
 
-         notificationService.sendNotification(
-                 device,
-                 currentUser,
-                 "Quyền truy cập bị thu hồi",
-                 "Bạn đã bị xóa khỏi " + device.getName()
-         );
-
-         notificationService.sendNotification(
-                 device,
-                 currentUser,
-                 "Đã xóa người dùng",
-                 "Đã xóa " + guest.getUsername()
-                         + " khỏi " + device.getName()
-         );
+         notificationService.sendNotification(device, currentUser, "Quyền truy cập bị thu hồi", "Bạn đã bị xóa khỏi " + device.getName());
+         notificationService.sendNotification(device, currentUser, "Đã xóa người dùng", "Đã xóa " + guest.getUsername() + " khỏi " + device.getName());
     }
 
-    public void renameDevice(
-            RenameDeviceRequest req
-    ) {
+    public void renameDevice(RenameDeviceRequest req) {
 
         User currentUser = securityUtils.getCurrentUser();
 
@@ -399,7 +243,6 @@ public class DeviceService {
 
 
         if (!device.getOwner().getId().equals(currentUser.getId())) {
-
             throw new RuntimeException(
                     "Không có quyền đổi tên thiết bị"
             );
@@ -410,34 +253,13 @@ public class DeviceService {
         device.setName(req.getName());
         deviceRepository.save(device);
 
-        deviceLogService.saveLog(
-                device,
-                currentUser,
-                null,
-                "RENAME_DEVICE",
-                currentUser.getUsername()
-                        + " đã đổi tên "
-                        + oldName
-                        + " thành "
-                        + req.getName(),
-                "MOBILE"
-        );
+        deviceLogService.saveLog(device, currentUser, null, "RENAME_DEVICE", currentUser.getUsername() + " đã đổi tên " + oldName + " thành " + req.getName(), "MOBILE");
 
-        List<UserDevice> users =
-                userDeviceRepository.findByDeviceId(device.getId());
+        List<UserDevice> users = userDeviceRepository.findByDeviceId(device.getId());
 
         for (UserDevice x : users) {
 
-            notificationService.sendNotification(
-                    device,
-                    currentUser,
-                    "Thiết bị đổi tên",
-                    currentUser.getUsername()
-                            + " đã đổi tên "
-                            + oldName
-                            + " thành "
-                            + req.getName()
-            );
+            notificationService.sendNotification(device, currentUser, "Thiết bị đổi tên", currentUser.getUsername() + " đã đổi tên " + oldName + " thành " + req.getName());
         }
 
         deviceRepository.save(device);

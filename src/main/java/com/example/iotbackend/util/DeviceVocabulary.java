@@ -32,12 +32,12 @@ public class DeviceVocabulary {
 
         input = TextNormalizer.normalize(input);
 
-        // 1. match nguyên cụm
+        // match nguyên cụm
         if (DEVICE_MAP.containsKey(input)) {
             return DEVICE_MAP.get(input);
         }
 
-        // 2. match từng từ trong câu (bật đèn -> den)
+        // match từng từ trong câu (bật đèn -> den)
         String[] words = input.split(" ");
         for (String w : words) {
             if (DEVICE_MAP.containsKey(w)) {
@@ -45,7 +45,7 @@ public class DeviceVocabulary {
             }
         }
 
-        // 3. fallback fuzzy nhẹ (sai 1 ký tự vẫn bắt được)
+        // fallback fuzzy nhẹ (sai 1 ký tự vẫn bắt được)
         for (String w : words) {
             for (String key : DEVICE_MAP.keySet()) {
                 if (levenshtein(w, key) <= 1) {
@@ -54,7 +54,7 @@ public class DeviceVocabulary {
             }
         }
 
-        // 4. không match thì trả về raw
+        // không match thì trả về raw
         return input;
     }
 

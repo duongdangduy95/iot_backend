@@ -24,11 +24,11 @@ public class MqttInboundConfig {
     @Value("${mqtt.client-id}")
     private String clientId;
 
-    // 1. Tiêm Bean cấu hình từ file MqttConfig vào đây
+
     @Autowired
     private MqttConnectOptions mqttConnectOptions;
 
-    // 2. Tạo một Client Factory để đóng gói cấu hình bảo mật
+
     @Bean
     public DefaultMqttPahoClientFactory mqttClientFactory() {
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
@@ -38,13 +38,7 @@ public class MqttInboundConfig {
 
     @Bean
     public MessageProducer inbound() {
-        // 3. Thay đổi Constructor của adapter để truyền factory vào thay vì truyền 'host' trực tiếp
-        MqttPahoMessageDrivenChannelAdapter adapter =
-                new MqttPahoMessageDrivenChannelAdapter(
-                        clientId + "-consumer",
-                        mqttClientFactory(), // Sử dụng factory có chứa bảo mật SSL
-                        "devices/#"          // 🔥 SUBSCRIBE ALL DEVICE TOPICS
-                );
+        MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(clientId + "-consumer", mqttClientFactory(), "devices/#");
 
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());

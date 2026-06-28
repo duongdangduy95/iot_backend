@@ -23,8 +23,7 @@ public class DeviceScheduleRunner {
 
     private void send(Long deviceId, boolean state) {
 
-        Device device = deviceRepository.findById(deviceId)
-                .orElseThrow();
+        Device device = deviceRepository.findById(deviceId).orElseThrow();
 
         String topic = "devices/" + device.getDeviceCode() + "/set";
 
@@ -34,7 +33,7 @@ public class DeviceScheduleRunner {
 
         mqttService.publish(topic, payload);
 
-        // cập nhật trạng thái DB
+
         device.setStatus(state ? "ON" : "OFF");
 
         deviceRepository.save(device);

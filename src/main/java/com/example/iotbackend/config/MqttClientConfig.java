@@ -21,11 +21,7 @@ public class MqttClientConfig {
     @Bean
     public MqttClient mqttClient() throws Exception {
 
-        MqttClient client =
-                new MqttClient(
-                        host,
-                        clientId
-                );
+        MqttClient client = new MqttClient(host, clientId);
 
         client.connect(options);
 

@@ -36,7 +36,6 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // 🔥 tạo OTP
         String otp = String.valueOf((int)(Math.random() * 900000) + 100000);
 
         VerificationToken verificationToken = new VerificationToken();
@@ -46,12 +45,7 @@ public class AuthService {
 
         tokenRepository.save(verificationToken);
 
-        // 🔥 gửi OTP qua mail
-        emailService.send(
-                request.getEmail(),
-                "Mã xác thực",
-                "OTP của bạn là: " + otp
-        );
+        emailService.send(request.getEmail(), "Mã xác thực", "OTP của bạn là: " + otp);
     }
     public String verify(VerifyRequest request) {
 
@@ -106,11 +100,7 @@ public class AuthService {
 
         tokenRepository.save(token);
 
-        emailService.send(
-                user.getEmail(),
-                "Reset mật khẩu",
-                "OTP reset mật khẩu: " + otp
-        );
+        emailService.send(user.getEmail(), "Reset mật khẩu", "OTP reset mật khẩu: " + otp);
     }
 
     public String resetPassword(ResetPasswordRequest request) {

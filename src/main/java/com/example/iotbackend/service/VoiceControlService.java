@@ -38,7 +38,6 @@ public class VoiceControlService {
         try {
 
             String text = speechToText(file);
-
             System.out.println("RAW SPEECH TEXT = " + text);
 
             return executeCommand(text);
@@ -46,16 +45,10 @@ public class VoiceControlService {
         } catch (Exception e) {
             e.printStackTrace();
 
-            return new VoiceControlResponse(
-                    false,
-                    e.getMessage()
-            );
+            return new VoiceControlResponse(false, e.getMessage());
         }
     }
 
-    // =========================
-    // FIX SPEECH TO TEXT CLEAN
-    // =========================
     private String speechToText(MultipartFile file) throws Exception {
 
         HttpHeaders headers = new HttpHeaders();
@@ -73,8 +66,7 @@ public class VoiceControlService {
         HttpEntity<MultiValueMap<String, Object>> request =
                 new HttpEntity<>(body, headers);
 
-        ResponseEntity<String> response =
-                restTemplate.postForEntity(
+        ResponseEntity<String> response = restTemplate.postForEntity(
                         "https://voicemodel-production.up.railway.app/speech-to-text",
                         request,
                         String.class
@@ -88,28 +80,16 @@ public class VoiceControlService {
 
         raw = raw.trim();
 
-        // =========================
-        // CASE 1: nếu API trả JSON
-        // =========================
         if (raw.startsWith("{")) {
             JsonNode node = objectMapper.readTree(raw);
-
             if (node.has("text")) {
                 return node.get("text").asText().trim();
             }
-
             return raw;
         }
-
-        // =========================
-        // CASE 2: plain text
-        // =========================
         return raw;
     }
 
-    // =========================
-    // COMMAND EXECUTION
-    // =========================
     private VoiceControlResponse executeCommand(String text) {
 
         String command = TextNormalizer.normalize(text);
@@ -122,10 +102,7 @@ public class VoiceControlService {
         } else if (command.contains("tat")) {
             state = false;
         } else {
-            return new VoiceControlResponse(
-                    false,
-                    "Không nhận diện được lệnh bật/tắt"
-            );
+            return new VoiceControlResponse(false, "Không nhận diện được lệnh bật/tắt");
         }
 
         String deviceName = command
@@ -140,35 +117,20 @@ public class VoiceControlService {
         return controlDeviceByName(deviceName, state);
     }
 
-    // =========================
-    // CONTROL DEVICE
-    // =========================
-    private VoiceControlResponse controlDeviceByName(
-            String deviceName,
-            boolean state
-    ) {
+    private VoiceControlResponse controlDeviceByName(String deviceName, boolean state) {
 
         User user = securityUtils.getCurrentUser();
 
-        List<UserDevice> userDevices =
-                userDeviceRepository.findByUserId(user.getId());
+        List<UserDevice> userDevices = userDeviceRepository.findByUserId(user.getId());
 
-        Device device =
-                userDevices.stream()
+        Device device = userDevices.stream()
                         .map(UserDevice::getDevice)
-                        .filter(d ->
-                                DeviceVocabulary
-                                        .normalizeDeviceName(d.getName())
-                                        .equals(deviceName)
-                        )
+                        .filter(d -> DeviceVocabulary.normalizeDeviceName(d.getName()).equals(deviceName))
                         .findFirst()
                         .orElse(null);
 
         if (device == null) {
-            return new VoiceControlResponse(
-                    false,
-                    "Không tìm thấy thiết bị: " + deviceName
-            );
+            return new VoiceControlResponse(false, "Không tìm thấy thiết bị: " + deviceName);
         }
 
         ControlDeviceRequest req = new ControlDeviceRequest();
@@ -177,9 +139,7 @@ public class VoiceControlService {
 
         controlDeviceService.controlDevice(req);
 
-        return new VoiceControlResponse(
-                true,
-                "Đã " + (state ? "bật " : "tắt ") + device.getName()
+        return new VoiceControlResponse(true, "Đã " + (state ? "bật " : "tắt ") + device.getName()
         );
     }
 }

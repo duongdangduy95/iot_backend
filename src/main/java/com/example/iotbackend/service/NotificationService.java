@@ -21,12 +21,10 @@ public class NotificationService {
     private final MqttService mqttService;
     private final UserDeviceRepository userDeviceRepository;
 
-    // =========================
-    // PUBLIC METHOD (SYNC)
-    // =========================
+
     public void sendNotification(Device device, User actor, String title, String content) {
 
-        // Lấy danh sách user KHÔNG TRÙNG
+        // Lấy danh sách user
         List<User> users = userDeviceRepository.findByDeviceId(device.getId())
                 .stream()
                 .map(UserDevice::getUser)
@@ -38,9 +36,7 @@ public class NotificationService {
         }
     }
 
-    // =========================
-    // ASYNC HANDLE (REAL INSERT)
-    // =========================
+
     @Async
     public void sendAsync(Device device, User actor, User recipient, String title, String content) {
 

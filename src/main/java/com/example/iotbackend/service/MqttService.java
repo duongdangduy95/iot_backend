@@ -11,27 +11,15 @@ public class MqttService {
 
     private final MqttClient mqttClient;
 
-    public void publish(
-            String topic,
-            String payload
-    ) {
+    public void publish(String topic, String payload) {
 
         try {
-
-            MqttMessage message =
-                    new MqttMessage(
-                            payload.getBytes()
-                    );
+            MqttMessage message = new MqttMessage(payload.getBytes());
 
             message.setQos(1);
-
-            mqttClient.publish(
-                    topic,
-                    message
-            );
+            mqttClient.publish(topic, message);
 
         } catch (Exception e) {
-
             throw new RuntimeException(e);
         }
     }

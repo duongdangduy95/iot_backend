@@ -19,14 +19,7 @@ public class DeviceLogService {
     private final UserDeviceRepository userDeviceRepository;
     private final SecurityUtils securityUtils;
 
-    public void saveLog(
-            Device device,
-            User actor,
-            User targetUser,
-            String action,
-            String detail,
-            String source
-    ) {
+    public void saveLog(Device device, User actor, User targetUser, String action, String detail, String source) {
 
         DeviceLog log = DeviceLog.builder()
                 .device(device)
@@ -45,14 +38,12 @@ public class DeviceLogService {
 
         User user = securityUtils.getCurrentUser();
 
-        List<Long> deviceIds = userDeviceRepository
-                .findByUserId(user.getId())
+        List<Long> deviceIds = userDeviceRepository.findByUserId(user.getId())
                 .stream()
                 .map(ud -> ud.getDevice().getId())
                 .toList();
 
-        return deviceLogRepository
-                .findByDevice_IdInOrderByCreatedAtDesc(deviceIds)
+        return deviceLogRepository.findByDevice_IdInOrderByCreatedAtDesc(deviceIds)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -65,11 +56,7 @@ public class DeviceLogService {
                 .deviceId(log.getDevice() != null ? log.getDevice().getId() : null)
                 .deviceName(log.getDevice() != null ? log.getDevice().getName() : null)
                 .actorName(log.getActor() != null ? log.getActor().getUsername() : null)
-                .targetUserName(
-                        log.getTargetUser() != null
-                                ? log.getTargetUser().getUsername()
-                                : null
-                )
+                .targetUserName(log.getTargetUser() != null ? log.getTargetUser().getUsername() : null)
                 .action(log.getAction())
                 .detail(log.getDetail())
                 .source(log.getSource())
