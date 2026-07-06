@@ -4,8 +4,12 @@ import com.example.iotbackend.entity.Device;
 import com.example.iotbackend.entity.Notification;
 import com.example.iotbackend.entity.User;
 import com.example.iotbackend.entity.UserDevice;
+import com.example.iotbackend.entity.UserDeviceToken;
 import com.example.iotbackend.repository.NotificationRepository;
 import com.example.iotbackend.repository.UserDeviceRepository;
+import com.example.iotbackend.repository.UserDeviceTokenRepository;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.Message;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -18,13 +22,10 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final MqttService mqttService;
     private final UserDeviceRepository userDeviceRepository;
-
+    private final UserDeviceTokenRepository userDeviceTokenRepository;
 
     public void sendNotification(Device device, User actor, String title, String content) {
-
-        // Lấy danh sách user
         List<User> users = userDeviceRepository.findByDeviceId(device.getId())
                 .stream()
                 .map(UserDevice::getUser)
@@ -36,10 +37,9 @@ public class NotificationService {
         }
     }
 
-
     @Async
     public void sendAsync(Device device, User actor, User recipient, String title, String content) {
-
+        // 1. Lưu thông báo lịch sử vào DB như cũ
         Notification n = Notification.builder()
                 .device(device)
                 .actor(actor)
@@ -51,15 +51,26 @@ public class NotificationService {
 
         notificationRepository.save(n);
 
-        mqttService.publish(
-                "users/" + recipient.getId() + "/notifications",
-                """
-                {
-                    "title":"%s",
-                    "content":"%s",
-                    "deviceName":"%s"
-                }
-                """.formatted(title, content, device.getName())
-        );
+        // 2. Lấy danh sách Token ứng với ID của người nhận thông qua Java code
+        List<UserDeviceToken> tokens = userDeviceTokenRepository.findByUserId(recipient.getId());
+
+        // 3. Gửi thông báo realtime bằng Firebase thay thế MQTT cũ
+        for (UserDeviceToken tokenEntity : tokens) {
+            try {
+                Message message = Message.builder()
+                        .setToken(tokenEntity.getFcmToken())
+                        .setNotification(com.google.firebase.messaging.Notification.builder()
+                                .setTitle(title)
+                                .setBody(content)
+                                .build())
+                        .putData("deviceName", device.getName())
+                        .putData("deviceId", device.getId().toString())
+                        .build();
+
+                FirebaseMessaging.getInstance().send(message);
+            } catch (Exception e) {
+                System.err.println("Gửi FCM lỗi cho token " + tokenEntity.getFcmToken() + ": " + e.getMessage());
+            }
+        }
     }
 }

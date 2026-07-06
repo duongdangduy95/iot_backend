@@ -1,8 +1,10 @@
 package com.example.iotbackend.controller;
 
 import com.example.iotbackend.dto.*;
+import com.example.iotbackend.entity.User;
 import com.example.iotbackend.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,10 +31,11 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public String logout() {
-        return "Logout thành công (client tự xoá token)";
+    public ResponseEntity<?> logout(@RequestBody LogoutRequest request) {
+        // Chỉ cần truyền request (chứa fcmToken) vào là đủ
+        authService.logout(request);
+        return ResponseEntity.ok("Logged out successfully, FCM Token removed.");
     }
-
     @PostMapping("/forgot-password")
     public String forgotPassword(@RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);

@@ -26,7 +26,6 @@ public class DeviceScheduleService {
     private final NotificationService notificationService;
 
     public DeviceSchedule create(DeviceScheduleRequest req) {
-
         User user = securityUtils.getCurrentUser();
 
         boolean hasPermission = userDeviceRepository
@@ -54,13 +53,13 @@ public class DeviceScheduleService {
 
         deviceLogService.saveLog(device, user, null, "CREATE_SCHEDULE", msg, "MOBILE");
 
+        // TỐI ƯU: Gọi thẳng sendNotification, hệ thống tự động quét gửi FCM cho tất cả người chung nhà
         notificationService.sendNotification(device, user, "Tạo lịch thành công", msg);
 
         return saved;
     }
 
     public List<DeviceSchedule> getSchedulesByDevice(Long deviceId) {
-
         User user = securityUtils.getCurrentUser();
 
         boolean hasPermission = userDeviceRepository
@@ -73,21 +72,17 @@ public class DeviceScheduleService {
         return repo.findByDeviceId(deviceId);
     }
 
-
     public void processSchedules() {
-
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now().withSecond(0).withNano(0);
 
         List<DeviceSchedule> schedules = repo.findByEnabledTrue();
 
         for (DeviceSchedule s : schedules) {
-
             if (!isValidDay(s, today)) continue;
 
             Device device = deviceRepository.findById(s.getDeviceId())
                     .orElseThrow(() -> new RuntimeException("Device not found"));
-
 
             if (s.getStartTime() != null
                     && !today.equals(s.getLastRunStart())
@@ -99,6 +94,7 @@ public class DeviceScheduleService {
 
                 deviceLogService.saveLog(device, null, null, "AUTO_TURN_ON", msg, "SCHEDULE");
 
+                // Gọi hàm notifyAllUsers đã tối ưu (không lo bị lặp lồng nhau nữa)
                 notifyAllUsers(device, msg, "Lịch tự động");
 
                 s.setLastRunStart(today);
@@ -121,34 +117,29 @@ public class DeviceScheduleService {
 
                 deviceLogService.saveLog(device, null, null, "AUTO_TURN_OFF", msg, "SCHEDULE");
 
+                // Gọi hàm notifyAllUsers đã tối ưu
                 notifyAllUsers(device, msg, "Lịch tự động");
 
                 s.setLastRunEnd(today);
 
-                if ("ONCE".equals(s.getType())) {s.setEnabled(false);}
+                if ("ONCE".equals(s.getType())) { s.setEnabled(false); }
 
                 repo.save(s);
             }
         }
     }
 
-
+    // --- ĐÃ ĐƯỢC TỐI ƯU LẠI HOÀN TOÀN TẠI ĐÂY ---
     private void notifyAllUsers(Device device, String msg, String title) {
-
-        List<User> users = userDeviceRepository.findByDeviceId(device.getId())
-                .stream()
-                .map(UserDevice::getUser)
-                .toList();
-
-        for (User u : users) {notificationService.sendNotification(device, null, title, msg);}
+        // Xóa bỏ hoàn toàn vòng lặp for và việc map thủ công ở đây.
+        // Chỉ cần gọi đúng 1 dòng này, vì bên trong sendNotification đã lo hết logic quét danh sách và gửi FCM rồi.
+        notificationService.sendNotification(device, null, title, msg);
     }
 
     private boolean isValidDay(DeviceSchedule s, LocalDate date) {
-
         if ("DAILY".equals(s.getType())) return true;
 
         if ("WEEKLY".equals(s.getType()) && s.getDaysOfWeek() != null) {
-
             DayOfWeek dow = date.getDayOfWeek();
             return s.getDaysOfWeek().contains(dow.name().substring(0, 3));
         }

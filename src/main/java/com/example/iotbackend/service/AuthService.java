@@ -7,10 +7,10 @@ import com.example.iotbackend.service.jwt.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -21,9 +21,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailService emailService;
+    private final UserDeviceTokenRepository userDeviceTokenRepository;
 
     public void register(RegisterRequest request) {
-
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email đã tồn tại");
         }
@@ -47,8 +47,8 @@ public class AuthService {
 
         emailService.send(request.getEmail(), "Mã xác thực", "OTP của bạn là: " + otp);
     }
-    public String verify(VerifyRequest request) {
 
+    public String verify(VerifyRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
@@ -67,8 +67,10 @@ public class AuthService {
         userRepository.save(user);
 
         return "Xác thực thành công!";
-    }    public AuthResponse login(LoginRequest request) {
+    }
 
+    @Transactional
+    public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
@@ -80,13 +82,31 @@ public class AuthService {
             throw new RuntimeException("Sai mật khẩu");
         }
 
-        String token = jwtService.generateToken(user);
+        // --- XỬ LÝ LƯU HOẶC CẬP NHẬT FCM TOKEN ---
+        if (request.getFcmToken() != null && !request.getFcmToken().isBlank()) {
+            // Nếu token này đã tồn tại ở thiết bị này trước đó (của chính user này hoặc user khác từng login máy này)
+            UserDeviceToken deviceToken = userDeviceTokenRepository
+                    .findByFcmToken(request.getFcmToken())
+                    .orElse(new UserDeviceToken());
 
+            deviceToken.setUserId(user.getId()); // Gán id user đăng nhập vào
+            deviceToken.setFcmToken(request.getFcmToken());
+
+            userDeviceTokenRepository.save(deviceToken);
+        }
+
+        String token = jwtService.generateToken(user);
         return new AuthResponse(token);
     }
 
-    public void forgotPassword(ForgotPasswordRequest request) {
+    // --- HÀM LOGOUT CHỈ CẦN TRUYỀN LÊN FCM TOKEN ĐỂ XÓA ---
+    public void logout(LogoutRequest request) {
+        if (request.getFcmToken() != null && !request.getFcmToken().isBlank()) {
+            userDeviceTokenRepository.deleteByFcmToken(request.getFcmToken());
+        }
+    }
 
+    public void forgotPassword(ForgotPasswordRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại"));
 
@@ -95,7 +115,7 @@ public class AuthService {
         VerificationToken token = new VerificationToken();
         token.setOtp(otp);
         token.setUser(user);
-        token.setType(VerificationToken.TokenType.RESET_PASSWORD); // 👈 phân biệt
+        token.setType(VerificationToken.TokenType.RESET_PASSWORD);
         token.setExpiryDate(LocalDateTime.now().plusMinutes(5));
 
         tokenRepository.save(token);
@@ -104,7 +124,6 @@ public class AuthService {
     }
 
     public String resetPassword(ResetPasswordRequest request) {
-
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
@@ -120,14 +139,11 @@ public class AuthService {
             throw new RuntimeException("OTP hết hạn");
         }
 
-        // update password
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        // xoá OTP sau khi dùng
         tokenRepository.delete(token);
 
         return "Đổi mật khẩu thành công!";
     }
-
 }
