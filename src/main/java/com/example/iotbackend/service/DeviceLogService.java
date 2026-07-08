@@ -7,12 +7,14 @@ import com.example.iotbackend.repository.UserDeviceRepository;
 import com.example.iotbackend.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class DeviceLogService {
 
     private final DeviceLogRepository deviceLogRepository;
