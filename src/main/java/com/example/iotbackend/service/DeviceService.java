@@ -205,7 +205,48 @@ public class DeviceService {
 
         deviceLogService.saveLog(device, currentUser, null, "RENAME_DEVICE", currentUser.getUsername() + " đã đổi tên " + oldName + " thành " + req.getName(), "MOBILE");
 
-        // TỐI ƯU TẠI ĐÂY: Xóa bỏ vòng lặp for của userDeviceRepository. Giao hoàn toàn cho sendNotification xử lý tự động
         notificationService.sendNotification(device, currentUser, "Thiết bị đổi tên", currentUser.getUsername() + " đã đổi tên " + oldName + " thành " + req.getName());
+    }
+
+    @Transactional
+    public void deleteDevice(Long deviceId) {
+
+        User currentUser = securityUtils.getCurrentUser();
+
+        Device device = deviceRepository.findById(deviceId).orElseThrow(() -> new RuntimeException("Device not found"));
+
+        if (!device.getOwner().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Không có quyền xóa thiết bị");
+        }
+
+        List<UserDevice> userDevices = userDeviceRepository.findByDeviceId(deviceId);
+
+        for (UserDevice ud : userDevices) {
+            if (!"OWNER".equals(ud.getRole())) {
+                notificationService.sendAsync(
+                        device,
+                        currentUser,
+                        ud.getUser(),
+                        "Thiết bị đã bị xóa",
+                        "Thiết bị " + device.getName() + " đã bị chủ sở hữu xóa."
+                );
+            }
+        }
+
+        // Ghi log
+        deviceLogService.saveLog(
+                device,
+                currentUser,
+                null,
+                "DELETE_DEVICE",
+                currentUser.getUsername() + " đã xóa thiết bị " + device.getName(),
+                "MOBILE"
+        );
+
+        // Xóa tất cả mapping OWNER + GUEST
+        userDeviceRepository.deleteByDeviceId(deviceId);
+
+        // Xóa thiết bị
+        deviceRepository.delete(device);
     }
 }

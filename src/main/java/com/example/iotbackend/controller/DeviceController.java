@@ -98,4 +98,10 @@ public class DeviceController {
         deviceService.renameDevice(req);
         return "Rename success";
     }
+
+    @DeleteMapping("/{deviceId}")
+    public ResponseEntity<Void> deleteDevice(@PathVariable Long deviceId) {
+        deviceService.deleteDevice(deviceId);
+        return ResponseEntity.noContent().build();
+    }
 }
