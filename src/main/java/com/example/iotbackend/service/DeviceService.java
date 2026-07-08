@@ -246,7 +246,5 @@ public class DeviceService {
         // Xóa tất cả mapping OWNER + GUEST
         userDeviceRepository.deleteByDeviceId(deviceId);
 
-        // Xóa thiết bị
-        deviceRepository.delete(device);
     }
 }
