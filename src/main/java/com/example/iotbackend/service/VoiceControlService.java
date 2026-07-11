@@ -7,6 +7,7 @@ import com.example.iotbackend.entity.User;
 import com.example.iotbackend.entity.UserDevice;
 import com.example.iotbackend.repository.UserDeviceRepository;
 import com.example.iotbackend.security.SecurityUtils;
+import com.example.iotbackend.util.CommandVocabulary;
 import com.example.iotbackend.util.DeviceVocabulary;
 import com.example.iotbackend.util.TextNormalizer;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -95,13 +96,9 @@ public class VoiceControlService {
         String command = TextNormalizer.normalize(text);
         System.out.println("NORMALIZED = " + command);
 
-        boolean state;
+        Boolean state = CommandVocabulary.normalizeCommand(command);
 
-        if (command.contains("bat")) {
-            state = true;
-        } else if (command.contains("tat")) {
-            state = false;
-        } else {
+        if (state == null) {
             return new VoiceControlResponse(false, "Không nhận diện được lệnh bật/tắt");
         }
 
