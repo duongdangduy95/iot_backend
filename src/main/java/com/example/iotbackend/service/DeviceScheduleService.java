@@ -44,6 +44,7 @@ public class DeviceScheduleService {
         s.setEndTime(req.getEndTime());
         s.setType(req.getType());
         s.setDaysOfWeek(req.getDaysOfWeek());
+        s.setExecuteDate(req.getExecuteDate());
         s.setEnabled(req.getEnabled());
         s.setUserId(user.getId());
 
@@ -137,13 +138,21 @@ public class DeviceScheduleService {
     }
 
     private boolean isValidDay(DeviceSchedule s, LocalDate date) {
-        if ("DAILY".equals(s.getType())) return true;
+
+        if ("ONCE".equals(s.getType())) {
+            return s.getExecuteDate() != null
+                    && s.getExecuteDate().equals(date);
+        }
+
+        if ("DAILY".equals(s.getType())) {
+            return true;
+        }
 
         if ("WEEKLY".equals(s.getType()) && s.getDaysOfWeek() != null) {
             DayOfWeek dow = date.getDayOfWeek();
             return s.getDaysOfWeek().contains(dow.name().substring(0, 3));
         }
 
-        return true;
+        return false;
     }
 }
