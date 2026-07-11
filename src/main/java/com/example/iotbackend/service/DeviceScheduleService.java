@@ -85,9 +85,7 @@ public class DeviceScheduleService {
             Device device = deviceRepository.findById(s.getDeviceId())
                     .orElseThrow(() -> new RuntimeException("Device not found"));
 
-            if (s.getStartTime() != null
-                    && !today.equals(s.getLastRunStart())
-                    && now.equals(s.getStartTime().withSecond(0).withNano(0))) {
+            if (s.getStartTime() != null && !today.equals(s.getLastRunStart()) && isWithinTolerance(s.getStartTime(), now, 60)) {
 
                 runner.turnOn(s.getDeviceId());
 
@@ -108,9 +106,7 @@ public class DeviceScheduleService {
                 repo.save(s);
             }
 
-            if (s.getEndTime() != null
-                    && !today.equals(s.getLastRunEnd())
-                    && now.equals(s.getEndTime().withSecond(0).withNano(0))) {
+            if (s.getEndTime() != null && !today.equals(s.getLastRunEnd()) && isWithinTolerance(s.getEndTime(), now, 60)) {
 
                 runner.turnOff(s.getDeviceId());
 
@@ -154,5 +150,16 @@ public class DeviceScheduleService {
         }
 
         return false;
+    }
+
+    private boolean isWithinTolerance(LocalTime scheduledTime, LocalTime now, long toleranceSeconds) {
+
+        if (scheduledTime == null) {
+            return false;
+        }
+
+        long diff = Duration.between(scheduledTime, now).getSeconds();
+
+        return diff >= 0 && diff <= toleranceSeconds;
     }
 }
